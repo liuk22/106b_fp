@@ -97,9 +97,8 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
         
         mat = cv2.rectangle(mat, (int(tracking_rect[0]), int(tracking_rect[1])), (int(tracking_rect[0] + tracking_rect[2]), int(tracking_rect[1] + tracking_rect[3])), 255, thickness=2)
         
-        cv2.imshow('image', mat)
-        cv2.waitKey(30)
-        cv2.destroyWindow('image')
+        t_rect_center_x = int((tracking_rect[0] + tracking_rect[2])/2)
+        t_rect_center_y = int((tracking_rect[1] + tracking_rect[3])/2)
     
 
 
