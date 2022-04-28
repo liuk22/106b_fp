@@ -5,6 +5,7 @@ from random import randrange, sample
 from cv2 import contourArea, imshow
 import numpy as np
 import cv2
+from numpy import diff
 from utils.utils import * 
 import time
 import math
@@ -100,10 +101,9 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
     # prev_xy = np.array([0, 0])
 
     xys = []
-    avg_delta_thetas = []
-    avg_speeds = []
     t = 0 
-    while not rospy.is_shutdown() and t < 100: 
+
+    while not rospy.is_shutdown() and t < 500: 
         image = rospy.wait_for_message(camera_image_topic, Image)
         mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
         err_code, tracking_rect = tracker.update(mat)
@@ -113,36 +113,15 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
         cv2.imshow("hi", mat)
         cv2.waitKey(30)
 
-        xy =  np.array([int((tracking_rect[0] + tracking_rect[2])/2), 
-                        int((tracking_rect[1] + tracking_rect[3])/2)])
+        xy =  np.array([(tracking_rect[0] + tracking_rect[2])/2, 
+                        (tracking_rect[1] + tracking_rect[3])/2])
 
         xys.append(xy)
-        print(xy)
-        buffer.append(xy)
-        # if ctr < window_size:
-        #     vel = xy - prev_xy
-        #     theta_curr= math.atan2(vel[1], vel[0])
-        #     prev_vel = prev_xy - prev_prev_xy
-        #     theta_prev = math.atan2(prev_vel[1], prev_vel[0])
-        #     ctr += 1
-        if len(buffer) >= 10:
-            diffs = [buffer[i] - buffer[i-1] for i in range(1, len(buffer))]
-            thetas = [math.atan2(diff[1], diff[0]) for diff in diffs]
-            delta_thetas = [thetas[i] - thetas[i-1] for i in range(1, len(thetas))]
-            avg_delta_theta = sum(delta_thetas) / len(delta_thetas)
-            avg_delta_thetas.append(avg_delta_theta)
-            
-            avg_speed = np.mean([np.linalg.norm(diff) for diff in diffs])
-            avg_speeds.append(avg_speed)
-            buffer.pop(0)
+        
         t += 1
-    # plt.figure()
-    # plt.scatter(avg_delta_thetas, avg_speeds)
-    # plt.show()
     plt.figure()
     xys = np.array(xys)
-    plt.scatter(xys[:,0], xys[:,1])
-    plt.show()
+    np.savetxt("./src/fp_pkg/data/position_data_2.txt", xys)
 
 if __name__ == '__main__':
     rospy.init_node("main")
