@@ -1,0 +1,82 @@
+<launch>
+    <arg name="sim" default="true"/>
+    <arg name="start_position" default="1 1 0" />
+    <arg name="map" default="empty.yaml" />
+
+    <group if="$(eval map == 'empty.yaml')">
+        <rosparam>
+            environment/obstacles: []
+            environment/low_lims: [0, 0]
+            environment/high_lims: [5, 5]
+        </rosparam>
+    </group>
+
+    <group if="$(eval map == 'map1.yaml')">
+        <rosparam>
+            environment/obstacles: [[6, 3.5, 1.5], [3.5, 6.5, 1]]
+            environment/low_lims: [0, 0]
+            environment/high_lims: [10, 10]
+        </rosparam>
+    </group>
+
+    <group if="$(eval map == 'map2.yaml')">
+        <rosparam>
+            environment/obstacles: [[2, 5, 1], [5, 5, 1], [8, 5, 1], [8, 2, 1], [2, 8, 1]]
+            environment/low_lims: [0, 0]
+            environment/high_lims: [10, 10]
+        </rosparam>
+    </group>
+
+    <group if="$(arg sim)">
+        <include file="$(find stdr_robot)/launch/robot_manager.launch" />
+        
+        <node type="stdr_server_node" pkg="stdr_server" name="stdr_server" output="screen" args="$(find proj2_pkg)/maps/$(arg map)"/>
+
+        <node pkg="tf" type="static_transform_publisher" name="world2map" args="0 0 0 0 0 0  world map 100" />
+        
+        <include file="$(find stdr_gui)/launch/stdr_gui.launch"/>
+
+        <node pkg="stdr_robot" type="robot_handler" name="$(anon robot_spawn)" args="add $(find proj2_pkg)/src/robot.yaml $(arg start_position)" />
+    </group>
+
+    <!-- Topics. -->
+    <arg name="bicycle_command_topic" default="/bicycle/cmd_vel" />
+    <arg name="sim_command_topic" default="/robot0/cmd_vel" />
+    <arg name="sim_pose_topic" default="/robot0/odom" />
+    <arg name="turtlebot_command_topic" default="/mobile_base/commands/velocity" />
+    <arg name="state_topic" default="/bicycle/state" />
+
+    <!-- Frames -->
+    <arg name="fixed_frame" default="fake_odom" />
+    <arg name="robot_frame" default="base_link" />
+
+    <!-- Length of imaginary car. -->
+    <arg name="length" default="0.3" />
+
+    <!-- Max Values -->
+    <arg name="max_steering_rate" default="3" />
+    <arg name="max_steering_angle" default="0.6" />
+    <arg name="max_linear_velocity" default="2" />
+
+  <!-- Bicycle Converter node. -->
+  <node name="bicycle_converter"
+      pkg="proj2_pkg"
+      type="bicycle_converter.py"
+      output="screen">
+
+    <param name="converter/sim" value="$(arg sim)" />
+    <param name="converter/sim_command_topic" value="$(arg sim_command_topic)" />
+    <param name="converter/turtlebot_command_topic" value="$(arg turtlebot_command_topic)" />
+    <param name="converter/fixed_frame" value="$(arg fixed_frame)" />
+    <param name="converter/robot_frame" value="$(arg robot_frame)" />
+    <param name="converter/sim_pose_topic" value="$(arg sim_pose_topic)" />
+    <param name="converter/state_topic" value="$(arg state_topic)" />
+    <param name="converter/bicycle_command_topic" value="$(arg bicycle_command_topic)" />
+    <param name="converter/length" value="$(arg length)" />
+    <param name="converter/max_steering_rate" value="$(arg max_steering_rate)" />
+    <param name="converter/max_steering_angle" value="$(arg max_steering_angle)" />
+    <param name="converter/max_linear_velocity" value="$(arg max_linear_velocity)" />
+
+  </node>
+    
+</launch>
