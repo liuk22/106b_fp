@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 from contextlib import contextmanager
+from sklearn.mixture import GMM
+import ../../../
 
 class Plan(object):
     """Data structure to represent a motion plan. Stores plans in the form of
@@ -260,6 +262,12 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
 
+        gmm = GMM(n_components=2, covariance_type='full')
+        labels = gmm.fit(X).predict(X)
+
+
+
+
     def distance(self, c1, c2):
         """
         c1 and c2 should be numpy.ndarrays of size (4,)
@@ -383,18 +391,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         input_primitives = {
             'fw_slow': np.vstack((0.1 * np.ones(timesteps), np.zeros(timesteps))).T,
-            'fw_fast': np.vstack((0.2 * np.ones(timesteps), np.zeros(timesteps))).T,
-            'bw_slow': -np.vstack((0.1 * np.ones(timesteps), np.zeros(timesteps))).T,
-            'bw_fast': -np.vstack((0.2 * np.ones(timesteps), np.zeros(timesteps))).T,
-            'rtf_slow': np.vstack((0.1 * np.ones(timesteps), -0.1 * np.ones(timesteps))).T,
-            'ltf_slow': np.vstack((0.1 * np.ones(timesteps), 0.1 * np.ones(timesteps))).T,
-            'ltb_slow': np.vstack((-0.1 * np.ones(timesteps), 0.1 * np.ones(timesteps))).T,
-            'rtb_slow': np.vstack((-0.1 * np.ones(timesteps), -0.1 * np.ones(timesteps))).T
-        #     'ltf_fast': 
-        #     'rtb_slow': 
-        #     'rtb_fast':
-        #     'ltb_slow':
-        #     'ltb_fast': 
+            'fw_fast': np.vstack((0.2 * np.ones(timesteps), np.zeros(timesteps))).T
         }
 
         min_d = float('inf')
