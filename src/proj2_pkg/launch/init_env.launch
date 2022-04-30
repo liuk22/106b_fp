@@ -1,13 +1,13 @@
 <launch>
     <arg name="sim" default="true"/>
-    <arg name="start_position" default="1 1 0" />
+    <arg name="start_position" default="10 10 0" />
     <arg name="map" default="empty.yaml" />
 
     <group if="$(eval map == 'empty.yaml')">
         <rosparam>
             environment/obstacles: []
             environment/low_lims: [0, 0]
-            environment/high_lims: [5, 5]
+            environment/high_lims: [300, 300]
         </rosparam>
     </group>
 
@@ -51,12 +51,12 @@
     <arg name="robot_frame" default="base_link" />
 
     <!-- Length of imaginary car. -->
-    <arg name="length" default="0.3" />
+    <arg name="length" default="10" />
 
     <!-- Max Values -->
-    <arg name="max_steering_rate" default="3" />
-    <arg name="max_steering_angle" default="0.6" />
-    <arg name="max_linear_velocity" default="2" />
+    <arg name="max_steering_rate" default="1000" />
+    <arg name="max_steering_angle" default="10" />
+    <arg name="max_linear_velocity" default="1000" />
 
   <!-- Bicycle Converter node. -->
   <node name="bicycle_converter"

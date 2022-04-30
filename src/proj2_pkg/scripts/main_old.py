@@ -20,10 +20,8 @@ def parse_args():
     Pretty self explanatory tbh
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-planner', '-p', type=str, default='sin', help=
-        'Options: sin, rrt, opt.  Default: sin')
-    parser.add_argument('-x', type=float, default=1.0, help='Desired position in x')
-    parser.add_argument('-y', type=float, default=1.0, help='Desired position in y')
+    parser.add_argument('-x', type=float, default=200, help='Desired position in x')
+    parser.add_argument('-y', type=float, default=200, help='Desired position in y')
     parser.add_argument('-theta', type=float, default=0.0, help='Desired turtlebot angle')
     parser.add_argument('-phi', type=float, default=0.0, help='Desired angle of the (imaginary) steering wheel')
     return parser.parse_args()
@@ -79,7 +77,7 @@ if __name__ == '__main__':
                                         [-u1_max, -u2_max],
                                         [u1_max, u2_max],
                                         obstacles,
-                                        0.15)
+                                        10)
 
     planner = RRTPlanner(config, max_iter=10000, expand_dist=0.8)
     plan = planner.plan_to_pose(controller.state, goal, dt=0.01, prefix_time_length=1)

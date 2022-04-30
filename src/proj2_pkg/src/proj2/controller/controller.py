@@ -12,7 +12,7 @@ import tf
 from std_srvs.srv import Empty as EmptySrv
 import rospy
 from proj2_pkg.msg import BicycleCommandMsg, BicycleStateMsg
-from proj2.planners import SinusoidPlanner, RRTPlanner, BicycleConfigurationSpace
+from proj2.planners import RRTPlanner, BicycleConfigurationSpace
 
 class BicycleModelController(object):
     def __init__(self):

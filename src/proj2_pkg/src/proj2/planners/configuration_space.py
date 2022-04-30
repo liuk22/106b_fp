@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 from contextlib import contextmanager
 from sklearn.mixture import GMM
-import ../../../
+import analysis
+import rospy
 
 class Plan(object):
     """Data structure to represent a motion plan. Stores plans in the form of
@@ -258,12 +259,11 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         dim = 4
         super(BicycleConfigurationSpace, self).__init__(dim, low_lims, high_lims, obstacles)
         self.robot_radius = robot_radius
-        self.robot_length = 0.3
+        self.robot_length = 10
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
-
-        gmm = GMM(n_components=2, covariance_type='full')
-        labels = gmm.fit(X).predict(X)
+        position_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/position_data_1_table.txt")
+        (self.phi1, self.v1), (self.phi2, self.v2) = analysis.determine_phi_v_primitives(position_data)
 
     def distance(self, c1, c2):
         """
@@ -303,7 +303,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             sample_pt = x, y, theta, 0
         return np.array(sample_pt)
             
-
     def check_collision(self, c):
         """
         Returns true if a configuration c is in collision
@@ -335,7 +334,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
                 return True
         return False
 
-    def local_plan(self, c1, c2, dt=0.01):
+    def local_plan(self, c1, c2, dt=0.1):
         """
         Constructs a local plan from c1 to c2. Usually, you want to
         just come up with any plan without worrying about obstacles,
@@ -347,8 +346,8 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         c1 = np.array(c1)
         c2 = np.array(c2)
         total_time = 1
-        timesteps = int(1 / dt) + 1
-        times = np.linspace(0, 1, timesteps ) # dt = 0.-1 default 
+        timesteps = int((1.0 / dt) + 1)
+        times = np.linspace(0, 1, timesteps) # dt = 0.-1 default 
         # Create a set of motion primitives from c1.
         def generate_target_positions(ol_inputs):
             target_positions = np.zeros((timesteps, 4))
@@ -360,8 +359,8 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             return target_positions
 
         input_primitives = {
-            'fw_slow': np.vstack((0.1 * np.ones(timesteps), np.zeros(timesteps))).T,
-            'fw_fast': np.vstack((0.2 * np.ones(timesteps), np.zeros(timesteps))).T
+            'fw_slow': np.vstack((self.v1 * np.ones(timesteps), self.phi1 * np.ones(timesteps))).T,
+            'fw_fast': np.vstack((self.v2 * -1 * np.ones(timesteps), self.phi2 * np.ones(timesteps))).T
         }
 
         min_d = float('inf')

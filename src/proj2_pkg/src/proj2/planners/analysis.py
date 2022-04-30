@@ -1,0 +1,89 @@
+from turtle import position
+import matplotlib.pyplot as plt 
+import numpy as np
+from sklearn.mixture import GMM
+from matplotlib.patches import Ellipse
+
+def reject_outliers_offline(data, m=3):
+    #print(abs(data - np.mean(data)) < m * np.std(data))
+    filtered = []
+    mean = np.mean(data, axis=0)
+    std = np.std(data, axis=0)
+    for pt in data:
+        if all(np.abs(pt - mean) < m * std):
+            filtered.append(pt)
+    filtered = np.array(filtered)
+    return filtered
+
+def analyze(position_data, window_size=5):
+    eps = 1e-7 # how small is zero? To reject xy points when we didn't find the bot for a frame
+    vector_acute_angle = lambda v1, v2: np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+
+    avg_phis = []
+    avg_speeds = []
+    buffer = []
+    for pos in position_data:
+        if abs(pos[0]) < eps and abs(pos[1]) < eps:
+            continue 
+        buffer.append(pos)
+
+        if len(buffer) >= window_size:
+            diffs = [buffer[i] - buffer[i-1] for i in range(1, len(buffer))]
+            phis = [vector_acute_angle(diffs[i], diffs[i - 1]) for i in range(1, len(diffs))]
+            
+            avg_phi = np.mean(phis)
+            avg_speed = np.mean([np.linalg.norm(diff) for diff in diffs])
+
+            buffer.pop(0)
+            if not (np.isnan(avg_speed) or np.isnan(avg_phi)):
+                avg_phis.append(avg_phi)
+                avg_speeds.append(avg_speed)
+                
+    return np.vstack((avg_phis, avg_speeds)).T
+
+# helper functions from https://jakevdp.github.io/PythonDataScienceHandbook/05.12-gaussian-mixtures.html
+def draw_ellipse(position, covariance, ax=None, **kwargs):
+    """Draw an ellipse with a given position and covariance"""
+    ax = ax or plt.gca()
+    
+    # Convert covariance to principal axes
+    if covariance.shape == (2, 2):
+        U, s, Vt = np.linalg.svd(covariance)
+        angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
+        width, height = 2 * np.sqrt(s)
+    else:
+        angle = 0
+        width, height = 2 * np.sqrt(covariance)
+    
+    # Draw the Ellipse
+    for nsig in range(1, 4):
+        ax.add_patch(Ellipse(position, nsig * width, nsig * height,
+                             angle, **kwargs))
+
+def determine_phi_v_primitives(position_data):
+    X = analyze(position_data, 5)
+    gmm = GMM(n_components=2, covariance_type='full')
+    gmm.fit(X)
+    return gmm.means_ # ((phi1, v1), (phi2, v2))
+
+def plot_pos_and_phi_v_clusters(position_data):
+    fig, ax = plt.subplots(2)
+
+    ax[0].scatter(position_data[:,0], position_data[:,1])
+    X = analyze(position_data, 5)
+
+    gmm = GMM(n_components=2, covariance_type='full')
+    ax[1].set_xlim([-1, 5])
+    labels = gmm.fit(X).predict(X)
+    ax[1].scatter(X[:, 0], X[:, 1], c=labels, s=40, cmap='viridis', zorder=2)
+    
+    w_factor = 0.2 / gmm.weights_.max()
+    for pos, covar, w in zip(gmm.means_, gmm.covars_, gmm.weights_):
+        draw_ellipse(pos, covar, alpha=w * w_factor)
+
+    plt.show()
+
+if __name__ == "__main__": 
+    position_data = np.loadtxt("../data/position_data_1_table.txt")
+    print(determine_phi_v_primitives(position_data))
+    plot_pos_and_phi_v_clusters(position_data)
