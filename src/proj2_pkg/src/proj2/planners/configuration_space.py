@@ -265,9 +265,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         gmm = GMM(n_components=2, covariance_type='full')
         labels = gmm.fit(X).predict(X)
 
-
-
-
     def distance(self, c1, c2):
         """
         c1 and c2 should be numpy.ndarrays of size (4,)
@@ -344,33 +341,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         just come up with any plan without worrying about obstacles,
         because the algorithm checks to see if the path is in collision,
         in which case it is discarded.
-
-        However, in the case of the nonholonomic bicycle model, it will
-        be very difficult for you to come up with a complete plan from c1
-        to c2. Instead, you should choose a set of "motion-primitives", and
-        then simply return whichever motion primitive brings you closest to c2.
-
-        A motion primitive is just some small, local motion, that we can perform
-        starting at c1. If we keep a set of these, we can choose whichever one
-        brings us closest to c2.
-
-        Keep in mind that choosing this set of motion primitives is tricky.
-        Every plan we come up with will just be a bunch of these motion primitives
-        chained together, so in order to get a complete motion planner, you need to 
-        ensure that your set of motion primitives is such that you can get from any
-        point to any other point using those motions.
-
-        For example, in cartesian space, a set of motion primitives could be 
-        {a1*x, a2*y, a3*z} where a1*x means moving a1 units in the x direction and
-        so on. By varying a1, a2, a3, we get our set of primitives, and as you can
-        see this set of primitives is rich enough that we can, indeed, get from any
-        point in cartesian space to any other point by chaining together a bunch
-        of these primitives. Then, this local planner would just amount to picking 
-        the values of a1, a2, a3 that bring us closest to c2.
-
-        You should spend some time thinking about what motion primitives would
-        be good to use for a bicycle model robot. What kinds of motions are at
-        our disposal?
 
         This should return a cofiguration_space.Plan object.
         """

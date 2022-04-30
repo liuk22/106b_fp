@@ -4,12 +4,17 @@ import numpy as np
 from sklearn.mixture import GMM
 from matplotlib.patches import Ellipse
 
-position_data = np.loadtxt("../data/position_data_2.txt")
+position_data = np.loadtxt("../data/position_data_1_table.txt")
 
 def reject_outliers(data, m=10):
     #print(abs(data - np.mean(data)) < m * np.std(data))
-    return data[abs(data - np.mean(data)) < m * np.std(data)]
-
+    print("mean is", np.mean(data, axis=0))
+    print('std is', np.std(data, axis=0))
+    return data[abs(data - np.mean(data, axis=0)) < m * np.std(data, axis=0)]
+    
+print(position_data.shape)
+position_data = reject_outliers(position_data)
+print(position_data.shape)
 
 fig, axs = plt.subplots(2)
 W = (0, 1000)

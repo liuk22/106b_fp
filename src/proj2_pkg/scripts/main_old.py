@@ -12,7 +12,7 @@ from std_srvs.srv import Empty as EmptySrv
 import rospy
 
 from proj2_pkg.msg import BicycleCommandMsg, BicycleStateMsg
-from proj2.planners import SinusoidPlanner, RRTPlanner, OptimizationPlanner, BicycleConfigurationSpace
+from proj2.planners import RRTPlanner, BicycleConfigurationSpace
 from proj2.controller import BicycleModelController
 
 def parse_args():
@@ -81,21 +81,10 @@ if __name__ == '__main__':
                                         obstacles,
                                         0.15)
 
-    if args.planner == 'sin':
-        planner = SinusoidPlanner(config)
-        ## Edit the dt and delta_t arguments to your needs.
-        plan = planner.plan_to_pose(controller.state, goal, dt=0.01, delta_t=2.0)
+    planner = RRTPlanner(config, max_iter=10000, expand_dist=0.8)
+    plan = planner.plan_to_pose(controller.state, goal, dt=0.01, prefix_time_length=1)
 
-    elif args.planner == 'rrt':
-        ## Edit the max_iter, expand_dist, dt and prefix_time_length arguments to your needs.
-        planner = RRTPlanner(config, max_iter=10000, expand_dist=0.8)
-        plan = planner.plan_to_pose(controller.state, goal, dt=0.01, prefix_time_length=1)
 
-    elif args.planner == 'opt':
-        planner = OptimizationPlanner(config)
-        ## Edit the dt and N arguments to your needs.
-        plan = planner.plan_to_pose(controller.state, goal, dt=0.1, N=100)
-    
     print("Predicted Initial State")
     print(plan.start_position())
     print("Predicted Final State")
