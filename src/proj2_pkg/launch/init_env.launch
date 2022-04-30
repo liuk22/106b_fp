@@ -1,6 +1,6 @@
 <launch>
     <arg name="sim" default="true"/>
-    <arg name="start_position" default="10 10 0" />
+    <arg name="start_position" default="150 150 0" />
     <arg name="map" default="empty.yaml" />
 
     <group if="$(eval map == 'empty.yaml')">

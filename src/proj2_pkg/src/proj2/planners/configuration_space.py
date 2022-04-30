@@ -359,9 +359,10 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             return target_positions
 
         input_primitives = {
-            'fw_slow': np.vstack((self.v1 * np.ones(timesteps), self.phi1 * np.ones(timesteps))).T,
-            'fw_fast': np.vstack((self.v2 * -1 * np.ones(timesteps), self.phi2 * np.ones(timesteps))).T
+            'forward': np.vstack((self.v1 * np.ones(timesteps), self.phi1 * np.ones(timesteps))).T,
+            'back_j': np.vstack((self.v2 * -1 * np.ones(timesteps), self.phi2 * np.ones(timesteps))).T
         }
+        rospy.logwarn("phis are: %f, %f" % (self.phi1, self.phi2))
 
         min_d = float('inf')
         closest_plan = None
