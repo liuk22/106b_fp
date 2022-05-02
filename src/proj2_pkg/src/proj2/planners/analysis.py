@@ -16,7 +16,7 @@ def reject_outliers_offline(data, m=3):
     filtered = np.array(filtered)
     return filtered
 
-def analyze(position_data, window_size=7):
+def analyze(position_data, window_size=10):
     eps = 1e-7 # how small is zero? To reject xy points when we didn't find the bot for a frame
     vector_acute_angle = lambda v1, v2: np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
 
@@ -30,9 +30,9 @@ def analyze(position_data, window_size=7):
 
         if len(buffer) >= window_size:
             diffs = [buffer[i] - buffer[i-1] for i in range(1, len(buffer))]
-            phis = [vector_acute_angle(diffs[i], diffs[i - 1]) for i in range(1, len(diffs))]
-            
-            avg_phi = np.linalg.norm(phis) ** 2
+            #phis = [vector_acute_angle(diffs[i], diffs[i - 1]) for i in range(1, len(diffs))]
+            avg_phi = vector_acute_angle(buffer[4] - buffer[0], buffer[9] - buffer[4])
+            avg_phi /= window_size
             avg_speed = np.mean([np.linalg.norm(diff) for diff in diffs])
 
             buffer.pop(0)
@@ -62,7 +62,7 @@ def draw_ellipse(position, covariance, ax=None, **kwargs):
                              angle, **kwargs))
 
 def determine_phi_v_primitives(position_data):
-    X = analyze(position_data, 5)
+    X = analyze(position_data)
     gmm = GMM(n_components=2, covariance_type='full')
     gmm.fit(X)
     return gmm.means_ # ((phi1, v1), (phi2, v2))
@@ -71,7 +71,7 @@ def plot_pos_and_phi_v_clusters(position_data):
     fig, ax = plt.subplots(2)
 
     ax[0].scatter(position_data[:,0], position_data[:,1])
-    X = analyze(position_data, 5)
+    X = analyze(position_data)
 
     gmm = GMM(n_components=2, covariance_type='full',random_state=32)
     ax[1].set_xlim([-1, 5])
@@ -119,7 +119,7 @@ def curvature_fit(position_data):
 
 
 if __name__ == "__main__": 
-    position_data = np.loadtxt("../data/curved.txt")
-    curvature_fit(position_data)
-    # print(determine_phi_v_primitives(position_data))
+    position_data = np.loadtxt("../data/position_data_1_table.txt")
+    #curvature_fit(position_data)
+    print(determine_phi_v_primitives(position_data))
     plot_pos_and_phi_v_clusters(position_data)

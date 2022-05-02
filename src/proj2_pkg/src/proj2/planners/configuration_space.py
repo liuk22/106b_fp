@@ -263,9 +263,9 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
         position_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/position_data_1_table.txt")
-        #(self.phi1, self.v1), (self.phi2, self.v2) = analysis.determine_phi_v_primitives(position_data)
-        self.phi1, self.v1 = 0.0003, 5
-        self.phi2, self.v2 = 0.01, 3 
+        (self.phi1, self.v1), (self.phi2, self.v2) = analysis.determine_phi_v_primitives(position_data)
+        #self.phi1, self.v1 = 0.0003, 5
+        #$self.phi2, self.v2 = 0.01, 3 
 
     def distance(self, c1, c2):
         """
