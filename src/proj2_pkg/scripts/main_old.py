@@ -79,8 +79,8 @@ if __name__ == '__main__':
                                         obstacles,
                                         10)
 
-    planner = RRTPlanner(config, max_iter=10000, expand_dist=0.8)
-    plan = planner.plan_to_pose(controller.state, goal, dt=0.01, prefix_time_length=1)
+    planner = RRTPlanner(config, max_iter=10000)
+    plan = planner.plan_to_pose(controller.state, goal, dt=0.1, prefix_time_length=1)
 
 
     print("Predicted Initial State")

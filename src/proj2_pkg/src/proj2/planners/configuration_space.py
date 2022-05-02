@@ -26,7 +26,7 @@ class Plan(object):
           method.
     """
 
-    def __init__(self, times, target_positions, open_loop_inputs, dt=0.01):
+    def __init__(self, times, target_positions, open_loop_inputs, dt=0.1):
         self.dt = dt
         self.times = times
         self.positions = target_positions
@@ -259,11 +259,13 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         dim = 4
         super(BicycleConfigurationSpace, self).__init__(dim, low_lims, high_lims, obstacles)
         self.robot_radius = robot_radius
-        self.robot_length = 10
+        self.robot_length = 1
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
         position_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/position_data_1_table.txt")
-        (self.phi1, self.v1), (self.phi2, self.v2) = analysis.determine_phi_v_primitives(position_data)
+        #(self.phi1, self.v1), (self.phi2, self.v2) = analysis.determine_phi_v_primitives(position_data)
+        self.phi1, self.v1 = 0.0003, 5
+        self.phi2, self.v2 = 0.01, 3 
 
     def distance(self, c1, c2):
         """
@@ -274,7 +276,8 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         a1, b1 = np.cos(theta1), np.sin(theta1)
         a2, b2 = np.cos(theta2), np.sin(theta2)
-        return np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (a2 - a1)**2 + (b2 - b1)**2) 
+        beta = 0.5
+        return np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + beta*((a2 - a1)**2 + (b2 - b1)**2)) 
 
     def sample_config(self, *args):
         """
@@ -345,7 +348,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         """
         c1 = np.array(c1)
         c2 = np.array(c2)
-        total_time = 1
         timesteps = int((1.0 / dt) + 1)
         times = np.linspace(0, 1, timesteps) # dt = 0.-1 default 
         # Create a set of motion primitives from c1.
@@ -354,15 +356,16 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             target_positions[0, :] = c1 # starting position 
             for t in range(1, timesteps):
                 x, y, theta, phi = target_positions[t-1, :]
-                speeds = np.array([np.cos(theta), np.sin(theta), 1/self.robot_length * np.tan(phi), 0]) * ol_inputs[t, 0] + np.array([0, 0, 0, 1]) * ol_inputs[t, 1]
-                target_positions[t, :] = target_positions[t-1, :] + speeds * dt
+                speeds = np.array([np.cos(theta), np.sin(theta), 1/self.robot_length * np.tan(ol_inputs[t, 1]), 0]) * ol_inputs[t, 0] 
+                target_positions[t, :] = target_positions[t-1, :] + speeds * dt 
+                target_positions[t, 3] = phi
             return target_positions
 
         input_primitives = {
             'forward': np.vstack((self.v1 * np.ones(timesteps), self.phi1 * np.ones(timesteps))).T,
             'back_j': np.vstack((self.v2 * -1 * np.ones(timesteps), self.phi2 * np.ones(timesteps))).T
         }
-        rospy.logwarn("phis are: %f, %f" % (self.phi1, self.phi2))
+        # rospy.logwarn("phis are: %f, %f" % (self.phi1, self.phi2))
 
         min_d = float('inf')
         closest_plan = None

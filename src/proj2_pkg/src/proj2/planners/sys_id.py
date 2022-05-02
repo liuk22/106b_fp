@@ -16,6 +16,7 @@ from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image, CameraInfo
 
 system_id_mode = True
+total_time = 5
 
 def transform_to_posestamped(transform):
     """
@@ -60,9 +61,7 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
     image_1 = rospy.wait_for_message(camera_image_topic, Image)
     image_1 = bridge.imgmsg_to_cv2(image_1, desired_encoding='passthrough')
     image_1 = cv2.cvtColor(image_1, cv2.COLOR_BGR2GRAY)
-    rospy.logwarn(str(image_1.shape))
 
-    return 
     image_2 = rospy.wait_for_message(camera_image_topic, Image)
     image_2 = bridge.imgmsg_to_cv2(image_2, desired_encoding='passthrough')
     image_2_gray = cv2.cvtColor(image_2, cv2.COLOR_BGR2GRAY)
@@ -88,7 +87,7 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
     xys = []
     t = 0 
 
-    while not rospy.is_shutdown() and t < 500: 
+    while not rospy.is_shutdown() and t < 10 * total_time: 
         image = rospy.wait_for_message(camera_image_topic, Image)
         mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
         err_code, tracking_rect = tracker.update(mat)
@@ -105,7 +104,7 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
         t += 1
     plt.figure()
     xys = np.array(xys)
-    #np.savetxt("./src/fp_pkg/data/position_data_2.txt", xys)
+    np.savetxt("./src/proj2_pkg/src/proj2/data/forward.txt", xys)
 
 if __name__ == '__main__':
     rospy.init_node("main")
