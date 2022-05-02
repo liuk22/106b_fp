@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-x', type=float, default=200, help='Desired position in x')
     parser.add_argument('-y', type=float, default=200, help='Desired position in y')
-    parser.add_argument('-theta', type=float, default=0.0, help='Desired turtlebot angle')
+    parser.add_argument('-theta', type=float, default=0.0, help='Desired angle')
     parser.add_argument('-phi', type=float, default=0.0, help='Desired angle of the (imaginary) steering wheel')
     return parser.parse_args()
 
@@ -72,17 +72,16 @@ if __name__ == '__main__':
 
     goal = np.array([args.x, args.y, args.theta, args.phi])
 
-    config = BicycleConfigurationSpace( xy_low + [-1000, -phi_max],
-                                        xy_high + [1000, phi_max],
-                                        [-u1_max, -u2_max],
-                                        [u1_max, u2_max],
-                                        obstacles,
-                                        10,
-                                        primitive_duration=controller.primitive_duration)
+    config = BicycleConfigurationSpace( low_lims = xy_low + [-1000, -phi_max],
+                                        high_lims = xy_high + [1000, phi_max],
+                                        input_low_lims = [-u1_max, -u2_max],
+                                        input_high_lims = [u1_max, u2_max],
+                                        obstacles = obstacles,
+                                        robot_radius = 10,
+                                        primitive_duration = controller.primitive_duration)
 
-    planner = RRTPlanner(config, 20, max_iter=10000)
+    planner = RRTPlanner(config, expand_dist=20, max_iter=10000)
     plan = planner.plan_to_pose(controller.state, goal, dt=0.1, prefix_time_length=1)
-
 
     print("Predicted Initial State")
     print(plan.start_position())

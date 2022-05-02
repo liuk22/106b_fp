@@ -255,7 +255,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         We assume that the robot is circular and has radius equal to robot_radius
         The state of the robot is defined as (x, y, theta, phi).
     """
-    def __init__(self, low_lims, high_lims, input_low_lims, input_high_lims, obstacles, robot_radius, primitive_duration=1.5):
+    def __init__(self, low_lims, high_lims, input_low_lims, input_high_lims, obstacles, robot_radius, primitive_duration):
         dim = 4
         super(BicycleConfigurationSpace, self).__init__(dim, low_lims, high_lims, obstacles)
         self.robot_radius = robot_radius
@@ -274,12 +274,12 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         """
         c1 and c2 should be numpy.ndarrays of size (4,)
         """
-        x1, y1, theta1, phi1 = c1
-        x2, y2, theta2, phi2 = c2
+        x1, y1, theta1, _ = c1
+        x2, y2, theta2, _ = c2
 
         a1, b1 = np.cos(theta1), np.sin(theta1)
         a2, b2 = np.cos(theta2), np.sin(theta2)
-        beta = 0.25
+        beta = 0.5
         return np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + beta*((a2 - a1)**2 + (b2 - b1)**2)) 
 
     def sample_config(self, *args):
@@ -316,9 +316,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         """
         x, y, _, _ = c
         for obsX, obsY, obsR in self.obstacles:
-            if (x - obsX)**2 + (y - obsY)**2 > (obsR + self.robot_radius)**2:
-                continue
-            else:
+            if (x - obsX)**2 + (y - obsY)**2 <= (obsR + self.robot_radius)**2:
                 return True
         return False
 

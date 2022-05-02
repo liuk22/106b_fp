@@ -69,9 +69,7 @@ def determine_phi_v_primitives(position_data):
     #(phi1, v1), (phi2, v2) = gmm.means_
     (phi, v) = gmm.means_[0]
 
-    v *= 10 
-    #v2 *= 10 
-    return (phi, v)# ((phi1, v1), (phi2, v2))
+    return (phi, v) # ((phi1, v1), (phi2, v2))
 
 def plot_pos_and_phi_v_clusters(position_data):
     fig, ax = plt.subplots(2)
@@ -97,39 +95,40 @@ def plot_pos_and_phi_v_clusters(position_data):
 
     plt.show()
 
-def curvature_fit(position_data):
-    featurized_data = []
-    for x, y in position_data:
-        features = [x**2 + y**2, x, y]
-        featurized_data.append(features)
+# def curvature_fit(position_data):
+#     featurized_data = []
+#     for x, y in position_data:
+#         features = [x**2 + y**2, x, y]
+#         featurized_data.append(features)
     
-    A = np.array(featurized_data)
-    b = np.ones(A.shape[0])
-    opti = casadi.Opti()
+#     A = np.array(featurized_data)
+#     b = np.ones(A.shape[0])
+#     opti = casadi.Opti()
 
-    x = opti.variable(3, 1)
-    obj = casadi.norm_2(casadi.mtimes(A, x) - b)
+#     x = opti.variable(3, 1)
+#     obj = casadi.norm_2(casadi.mtimes(A, x) - b)
 
-    opti.minimize(obj)
+#     opti.minimize(obj)
 
-    opti.subject_to([x[0] > 0])
+#     opti.subject_to([x[0] > 0])
 
-    p_opts = {"expand": False}
-    s_opts = {"max_iter": 1e4}
+#     p_opts = {"expand": False}
+#     s_opts = {"max_iter": 1e4}
 
-    opti.solver('ipopt', p_opts, s_opts)
-    sol = opti.solve()
+#     opti.solver('ipopt', p_opts, s_opts)
+#     sol = opti.solve()
 
-    print(sol.value(x))
+#     print(sol.value(x))
 
-    # a, b, c = np.linalg.lstsq(featurized_data, np.ones(featurized_data.shape[0]))[0]
-    # print("values are ", a, b, c)
-    # a
-    # if a == 0: 
-    #     return 0
-    # else:
-    #     return 1-
-
+#     # a, b, c = np.linalg.lstsq(featurized_data, np.ones(featurized_data.shape[0]))[0]
+#     # print("values are ", a, b, c)
+#     # a
+#     # if a == 0: 
+#     #     return 0
+#     # else:
+#     #     rsq = (1-d)/a + (b**2 + c**2)/(2 * a**2)
+      #     r = pow(rsq, 1.0/2)
+      #     return 1/r
 
 if __name__ == "__main__": 
     position_data = np.loadtxt("../data/position_data_1_table.txt")

@@ -87,24 +87,37 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
     xys = []
     t = 0 
 
+    last_track_rect = None 
     while not rospy.is_shutdown() and t < 10 * total_time: 
         image = rospy.wait_for_message(camera_image_topic, Image)
         mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
-        err_code, tracking_rect = tracker.update(mat)
+        if not last_track_rect: 
+            err_code, tracking_rect = tracker.update(mat)
+            last_track_rect = tracking_rect
+        else: 
+            last_track_rect = tracking_rect
+            err_code, tracking_rect = tracker.update(mat)
         
         mat = cv2.rectangle(mat, (int(tracking_rect[0]), int(tracking_rect[1])), (int(tracking_rect[0] + tracking_rect[2]), int(tracking_rect[1] + tracking_rect[3])), 255, thickness=2)
-        
+
+
+
+        xy =  np.array([(tracking_rect[0] + tracking_rect[2] / 2), 
+                        (tracking_rect[1] + tracking_rect[3] / 2)]).astype(int)
+        xy_old =  np.array([(last_track_rect[0] + last_track_rect[2] / 2), 
+                (last_track_rect[1] + last_track_rect[3] / 2)]).astype(int)
+        arrow_end = xy + 5 * (xy - xy_old)
+        mat = cv2.arrowedLine(mat, tuple(xy_old), tuple(arrow_end), (0, 255, 0), thickness=3)
+        #cv2.imwrite("tracking.png", mat)
         cv2.imshow("Camera Tracking", mat)
         cv2.waitKey(30)
-
-        xy =  np.array([(tracking_rect[0] + tracking_rect[2])/2, 
-                        (tracking_rect[1] + tracking_rect[3])/2])
-
+        
+        
         xys.append(xy)
         t += 1
     plt.figure()
     xys = np.array(xys)
-    np.savetxt("./src/proj2_pkg/src/proj2/data/forward.txt", xys)
+    #np.savetxt("./src/proj2_pkg/src/proj2/data/forward.txt", xys)
 
 if __name__ == '__main__':
     rospy.init_node("main")

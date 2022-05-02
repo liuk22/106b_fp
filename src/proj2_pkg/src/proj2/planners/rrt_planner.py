@@ -58,8 +58,6 @@ class RRTPlanner(object):
         self.graph = RRTGraph(start)
         self.plan = None
         print("Iteration:", 0)
-        collision_checks = 0 
-        path_checks = 0 
         for it in range(self.max_iter):
             sys.stdout.write("\033[F")
             print("Iteration:", it + 1)
@@ -68,12 +66,10 @@ class RRTPlanner(object):
                 break
             rand_config = self.config_space.sample_config(goal, self.graph.nodes) # ADD EXISTING POINTS AS A SECOND ARG HERE
             if self.config_space.check_collision(rand_config):
-                collision_checks += 1 
                 continue
             closest_config = self.config_space.nearest_config_to(self.graph.nodes, rand_config)
             path = self.config_space.local_plan(closest_config, rand_config)
             if self.config_space.check_path_collision(path):
-                path_checks += 1 
                 continue
             delta_path = path.get_prefix(prefix_time_length)
             new_config = delta_path.end_position()
@@ -81,16 +77,8 @@ class RRTPlanner(object):
             if len(self.graph.nodes) % 500 == 0:
                 self.plot_execution()
             if self.config_space.distance(new_config, goal) <= self.expand_dist:
-                rospy.logwarn("%d real dist %d expand dist" % (self.config_space.distance(new_config, goal),  self.expand_dist))
-                rospy.logwarn(str(new_config))
-                rospy.logwarn(str(goal))
-                #path_to_goal = self.config_space.local_plan(new_config, goal)
-                #if self.config_space.check_path_collision(path_to_goal):
-                #    continue
-                #self.graph.add_node(goal, new_config, path_to_goal)
                 self.plan = self.graph.construct_path_to(new_config)
                 return self.plan
-        rospy.logwarn(str("%d config collision %d path collision" % (collision_checks, path_checks)))
         print("Failed to find plan in allotted number of iterations.")
         return None
 
@@ -124,33 +112,3 @@ class RRTPlanner(object):
             ax.plot(plan_x, plan_y, color='green')
 
         plt.show()
-
-def main():
-    """Use this function if you'd like to test without ROS.
-
-    If you're testing at home without ROS, you might want
-    to get rid of the rospy.is_shutdown check in the main 
-    planner loop (and the corresponding rospy import).
-    """
-    start = np.array([1, 1, 0, 0]) 
-    goal = np.array([9, 9, 0, 0])
-    xy_low = [0, 0]
-    xy_high = [10, 10]
-    phi_max = 0.6
-    u1_max = 2
-    u2_max = 3
-    obstacles = [[6, 3.5, 1.5], [3.5, 6.5, 1]]
-
-    config = BicycleConfigurationSpace( xy_low + [-1000, -phi_max],
-                                        xy_high + [1000, phi_max],
-                                        [-u1_max, -u2_max],
-                                        [u1_max, u2_max],
-                                        obstacles,
-                                        0.15)
-
-    planner = RRTPlanner(config, max_iter=10000, expand_dist=10)
-    plan = planner.plan_to_pose(start, goal)
-    planner.plot_execution()
-
-if __name__ == '__main__':
-    main()
