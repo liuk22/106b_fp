@@ -255,7 +255,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         We assume that the robot is circular and has radius equal to robot_radius
         The state of the robot is defined as (x, y, theta, phi).
     """
-    def __init__(self, low_lims, high_lims, input_low_lims, input_high_lims, obstacles, robot_radius):
+    def __init__(self, low_lims, high_lims, input_low_lims, input_high_lims, obstacles, robot_radius, primitive_duration=1.5):
         dim = 4
         super(BicycleConfigurationSpace, self).__init__(dim, low_lims, high_lims, obstacles)
         self.robot_radius = robot_radius
@@ -264,14 +264,11 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.input_high_lims = input_high_lims
         forward_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/forward.txt")
         curved_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/curved.txt")
-        (self.phi1, self.v1) = analysis.determine_phi_v_primitives(forward_data)[0]
-        (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)[0]
+        (self.phi1, self.v1) = analysis.determine_phi_v_primitives(forward_data)
+        (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)
+        self.primitive_duration = primitive_duration
 
-        self.v1 *= 10 
-        self.v2 *= 10 
-        # scaling by pixels per dt
-        #self.phi1, self.v1 = 0.0003, 5
-        #$self.phi2, self.v2 = 0.01, 3 
+        # scaling by 10 pixels per dt
 
     def distance(self, c1, c2):
         """
@@ -282,7 +279,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         a1, b1 = np.cos(theta1), np.sin(theta1)
         a2, b2 = np.cos(theta2), np.sin(theta2)
-        beta = 0.5
+        beta = 0.25
         return np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + beta*((a2 - a1)**2 + (b2 - b1)**2)) 
 
     def sample_config(self, *args):
@@ -355,9 +352,8 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         c1 = np.array(c1)
         c2 = np.array(c2)
-        primitive_duration = 1.5
-        timesteps = int((primitive_duration / dt) + 1)
-        times = np.linspace(0, primitive_duration, timesteps) # dt = 0.-1 default 
+        timesteps = int((self.primitive_duration / dt) + 1)
+        times = np.linspace(0, self.primitive_duration, timesteps) # dt = 0.-1 default 
         
         # Create a set of motion primitives from c1.
         def generate_target_positions(ol_inputs):

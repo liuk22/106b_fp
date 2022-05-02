@@ -77,9 +77,10 @@ if __name__ == '__main__':
                                         [-u1_max, -u2_max],
                                         [u1_max, u2_max],
                                         obstacles,
-                                        10)
+                                        10,
+                                        primitive_duration=controller.primitive_duration)
 
-    planner = RRTPlanner(config, max_iter=10000)
+    planner = RRTPlanner(config, 20, max_iter=10000)
     plan = planner.plan_to_pose(controller.state, goal, dt=0.1, prefix_time_length=1)
 
 

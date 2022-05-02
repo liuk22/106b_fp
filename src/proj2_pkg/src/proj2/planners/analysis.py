@@ -31,6 +31,7 @@ def analyze(position_data, window_size=10):
         if len(buffer) >= window_size:
             diffs = [buffer[i] - buffer[i-1] for i in range(1, len(buffer))]
             #phis = [vector_acute_angle(diffs[i], diffs[i - 1]) for i in range(1, len(diffs))]
+            #avg_phi = np.mean([vector_acute_angle(diffs[i], diffs[i - 1]) for i in range(1, len(diffs))])
             avg_phi = vector_acute_angle(buffer[4] - buffer[0], buffer[9] - buffer[4])
             avg_phi /= window_size
             avg_speed = np.mean([np.linalg.norm(diff) for diff in diffs])
@@ -65,18 +66,30 @@ def determine_phi_v_primitives(position_data):
     X = analyze(position_data)
     gmm = GMM(n_components=1, covariance_type='full')
     gmm.fit(X)
-    return gmm.means_ # ((phi1, v1), (phi2, v2))
+    #(phi1, v1), (phi2, v2) = gmm.means_
+    (phi, v) = gmm.means_[0]
+
+    v *= 10 
+    #v2 *= 10 
+    return (phi, v)# ((phi1, v1), (phi2, v2))
 
 def plot_pos_and_phi_v_clusters(position_data):
     fig, ax = plt.subplots(2)
 
     ax[0].scatter(position_data[:,0], position_data[:,1])
+    ax[0].set_title("Image Space Position Data Points")
+    ax[0].set_ylabel("Y Pixel Position")
+    ax[0].set_xlabel("X Pixel Position")
+
     X = analyze(position_data)
 
-    gmm = GMM(n_components=1, covariance_type='full',random_state=32)
+    gmm = GMM(n_components=2, covariance_type='full',random_state=32)
     ax[1].set_xlim([-1, 5])
     labels = gmm.fit(X).predict(X)
     ax[1].scatter(X[:, 0], X[:, 1], c=labels, s=40, cmap='viridis', zorder=2)
+    ax[1].set_title("Image Space Dynamics Data Points")
+    ax[1].set_ylabel("Velocity Magnitudes (pixels/timestep)")
+    ax[1].set_xlabel("Turning Angle (radians)")
     
     w_factor = 0.2 / gmm.weights_.max()
     for pos, covar, w in zip(gmm.means_, gmm.covars_, gmm.weights_):

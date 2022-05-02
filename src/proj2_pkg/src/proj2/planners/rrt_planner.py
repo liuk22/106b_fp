@@ -38,7 +38,7 @@ class RRTGraph(object):
 
 class RRTPlanner(object):
 
-    def __init__(self, config_space, max_iter=10000, expand_dist=30):
+    def __init__(self, config_space, expand_dist, max_iter=10000):
         # config_space should be an object of type ConfigurationSpace
         # (or a subclass of ConfigurationSpace).
         self.config_space = config_space
@@ -81,11 +81,14 @@ class RRTPlanner(object):
             if len(self.graph.nodes) % 500 == 0:
                 self.plot_execution()
             if self.config_space.distance(new_config, goal) <= self.expand_dist:
-                path_to_goal = self.config_space.local_plan(new_config, goal)
-                if self.config_space.check_path_collision(path_to_goal):
-                    continue
-                self.graph.add_node(goal, new_config, path_to_goal)
-                self.plan = self.graph.construct_path_to(goal)
+                rospy.logwarn("%d real dist %d expand dist" % (self.config_space.distance(new_config, goal),  self.expand_dist))
+                rospy.logwarn(str(new_config))
+                rospy.logwarn(str(goal))
+                #path_to_goal = self.config_space.local_plan(new_config, goal)
+                #if self.config_space.check_path_collision(path_to_goal):
+                #    continue
+                #self.graph.add_node(goal, new_config, path_to_goal)
+                self.plan = self.graph.construct_path_to(new_config)
                 return self.plan
         rospy.logwarn(str("%d config collision %d path collision" % (collision_checks, path_checks)))
         print("Failed to find plan in allotted number of iterations.")
@@ -145,7 +148,7 @@ def main():
                                         obstacles,
                                         0.15)
 
-    planner = RRTPlanner(config, max_iter=10000, expand_dist=30)
+    planner = RRTPlanner(config, max_iter=10000, expand_dist=10)
     plan = planner.plan_to_pose(start, goal)
     planner.plot_execution()
 
