@@ -262,8 +262,14 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.robot_length = 1
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
-        position_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/position_data_1_table.txt")
-        (self.phi1, self.v1), (self.phi2, self.v2) = analysis.determine_phi_v_primitives(position_data)
+        forward_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/forward.txt")
+        curved_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/curved.txt")
+        (self.phi1, self.v1) = analysis.determine_phi_v_primitives(forward_data)[0]
+        (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)[0]
+
+        self.v1 *= 10 
+        self.v2 *= 10 
+        # scaling by pixels per dt
         #self.phi1, self.v1 = 0.0003, 5
         #$self.phi2, self.v2 = 0.01, 3 
 
@@ -346,10 +352,13 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         This should return a cofiguration_space.Plan object.
         """
+
         c1 = np.array(c1)
         c2 = np.array(c2)
-        timesteps = int((1.0 / dt) + 1)
-        times = np.linspace(0, 1, timesteps) # dt = 0.-1 default 
+        primitive_duration = 1.5
+        timesteps = int((primitive_duration / dt) + 1)
+        times = np.linspace(0, primitive_duration, timesteps) # dt = 0.-1 default 
+        
         # Create a set of motion primitives from c1.
         def generate_target_positions(ol_inputs):
             target_positions = np.zeros((timesteps, 4))
@@ -372,6 +381,8 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         for name in input_primitives:
             ol_input = input_primitives[name]
             target_positions = generate_target_positions(ol_input)
+            #rospy.logwarn("start config: " + str(c1)) 
+            #rospy.logwarn("target configs: " + str(target_positions[-1))
             plan = Plan(times, target_positions, ol_input, dt=dt)
             d = self.distance(plan.end_position(), c2)
             if d < min_d:

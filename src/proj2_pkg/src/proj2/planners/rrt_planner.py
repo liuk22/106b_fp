@@ -49,7 +49,7 @@ class RRTPlanner(object):
         self.expand_dist = expand_dist
 
 
-    def plan_to_pose(self, start, goal, dt=0.1, prefix_time_length=15):
+    def plan_to_pose(self, start, goal, dt=0.1, prefix_time_length=100):
         """
             Uses the RRT algorithm to plan from the start configuration
             to the goal configuration.
@@ -80,13 +80,9 @@ class RRTPlanner(object):
             self.graph.add_node(new_config, closest_config, delta_path)
             if len(self.graph.nodes) % 500 == 0:
                 self.plot_execution()
-            rospy.logwarn("distance is " + str(self.config_space.distance(new_config, goal)))
-            rospy.logwarn("expand dist" + str(self.expand_dist))
             if self.config_space.distance(new_config, goal) <= self.expand_dist:
-                rospy.logwarn("im here")
                 path_to_goal = self.config_space.local_plan(new_config, goal)
                 if self.config_space.check_path_collision(path_to_goal):
-                    rospy.logwarn('But path collision')
                     continue
                 self.graph.add_node(goal, new_config, path_to_goal)
                 self.plan = self.graph.construct_path_to(goal)

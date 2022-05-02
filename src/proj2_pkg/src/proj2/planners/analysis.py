@@ -63,7 +63,7 @@ def draw_ellipse(position, covariance, ax=None, **kwargs):
 
 def determine_phi_v_primitives(position_data):
     X = analyze(position_data)
-    gmm = GMM(n_components=2, covariance_type='full')
+    gmm = GMM(n_components=1, covariance_type='full')
     gmm.fit(X)
     return gmm.means_ # ((phi1, v1), (phi2, v2))
 
@@ -73,7 +73,7 @@ def plot_pos_and_phi_v_clusters(position_data):
     ax[0].scatter(position_data[:,0], position_data[:,1])
     X = analyze(position_data)
 
-    gmm = GMM(n_components=2, covariance_type='full',random_state=32)
+    gmm = GMM(n_components=1, covariance_type='full',random_state=32)
     ax[1].set_xlim([-1, 5])
     labels = gmm.fit(X).predict(X)
     ax[1].scatter(X[:, 0], X[:, 1], c=labels, s=40, cmap='viridis', zorder=2)
