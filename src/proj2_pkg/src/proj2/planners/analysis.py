@@ -33,7 +33,7 @@ def analyze(position_data, window_size=10):
             #phis = [vector_acute_angle(diffs[i], diffs[i - 1]) for i in range(1, len(diffs))]
             #avg_phi = np.mean([vector_acute_angle(diffs[i], diffs[i - 1]) for i in range(1, len(diffs))])
             avg_phi = vector_acute_angle(buffer[4] - buffer[0], buffer[9] - buffer[4])
-            avg_phi /= window_size
+            avg_phi /= window_size            
             avg_speed = np.mean([np.linalg.norm(diff) for diff in diffs])
 
             buffer.pop(0)
@@ -81,7 +81,7 @@ def plot_pos_and_phi_v_clusters(position_data):
 
     X = analyze(position_data)
 
-    gmm = GMM(n_components=2, covariance_type='full',random_state=32)
+    gmm = GMM(n_components=1, covariance_type='full',random_state=32)
     ax[1].set_xlim([-1, 5])
     labels = gmm.fit(X).predict(X)
     ax[1].scatter(X[:, 0], X[:, 1], c=labels, s=40, cmap='viridis', zorder=2)
@@ -131,7 +131,7 @@ def plot_pos_and_phi_v_clusters(position_data):
       #     return 1/r
 
 if __name__ == "__main__": 
-    position_data = np.loadtxt("../data/position_data_1_table.txt")
+    position_data = np.loadtxt("../data/backward_may_4.txt")
     #curvature_fit(position_data)
     print(determine_phi_v_primitives(position_data))
     plot_pos_and_phi_v_clusters(position_data)

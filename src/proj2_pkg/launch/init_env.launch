@@ -1,13 +1,13 @@
 <launch>
     <arg name="sim" default="true"/>
-    <arg name="start_position" default="150 150 0" />
+    <arg name="start_position" default="200 150 0" />
     <arg name="map" default="empty.yaml" />
 
     <group if="$(eval map == 'empty.yaml')">
         <rosparam>
             environment/obstacles: []
             environment/low_lims: [0, 0]
-            environment/high_lims: [300, 300]
+            environment/high_lims: [1280, 720]
         </rosparam>
     </group>
 

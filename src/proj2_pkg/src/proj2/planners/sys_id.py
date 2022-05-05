@@ -1,11 +1,6 @@
 #!/usr/bin/env python
-from cgitb import lookup
-from os import system
-from random import randrange, sample
-from cv2 import contourArea, imshow
 import numpy as np
 import cv2
-from numpy import diff
 from utils.utils import * 
 import matplotlib.pyplot as plt
 
@@ -14,9 +9,10 @@ import rospy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image, CameraInfo
+from proj2.planners import RRTPlanner, BicycleConfigurationSpace
+from proj2.controller import BicycleModelController
 
-system_id_mode = True
-total_time = 5
+SYSTEM_ID_MODE = False
 
 def transform_to_posestamped(transform):
     """
@@ -36,34 +32,16 @@ def transform_to_posestamped(transform):
     ps.header.frame_id = 'base'
     return ps 
 
-
-def plan_and_execute(planner, target_transform, stage_msg): 
-    planning_done = False 
-    plan = None 
-    while not planning_done:
-        ps = transform_to_posestamped(target_transform)
-        # rospy.logwarn("gripper final target:\n %s" % str(ps))
-    
-        plan = planner.plan_to_pose(ps)
-        if not plan:
-            rospy.logwarn("didn't find %s plan, retrying" % stage_msg)
-            continue 
-        else: 
-            planning_done = True 
-    planner.execute_plan(plan)
-
-
-def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
-    bridge = CvBridge()
+def localize_robot_initial_track_rect(cv_bridge, camera_image_topic, camera_info_topic):
     info = rospy.wait_for_message(camera_info_topic, CameraInfo)
 
     # use frame delta of first 2 frames and get bounding box 
     image_1 = rospy.wait_for_message(camera_image_topic, Image)
-    image_1 = bridge.imgmsg_to_cv2(image_1, desired_encoding='passthrough')
+    image_1 = cv_bridge.imgmsg_to_cv2(image_1, desired_encoding='passthrough')
     image_1 = cv2.cvtColor(image_1, cv2.COLOR_BGR2GRAY)
 
     image_2 = rospy.wait_for_message(camera_image_topic, Image)
-    image_2 = bridge.imgmsg_to_cv2(image_2, desired_encoding='passthrough')
+    image_2 = cv_bridge.imgmsg_to_cv2(image_2, desired_encoding='passthrough')
     image_2_gray = cv2.cvtColor(image_2, cv2.COLOR_BGR2GRAY)
 
     image_delta = cv2.absdiff(image_1, image_2_gray)
@@ -75,49 +53,60 @@ def perform_sys_id(camera_image_topic, camera_info_topic, camera_frame):
     contour_list.sort(key=cv2.contourArea)
 
     largest_contour = contour_list[-1]
-    lcbb_x, lcbb_y, lcbb_w, lcbb_h = cv2.boundingRect(largest_contour)
+    return (cv2.boundingRect(largest_contour), image_2)
 
+def two_rects_to_state(b_rect_new, b_rect_old):
+    xy =  np.array([(b_rect_new[0] + b_rect_new[2] / 2), 
+                        (b_rect_new[1] + b_rect_new[3] / 2)]).astype(int)
+    xy_old =  np.array([(b_rect_old[0] + b_rect_old[2] / 2), 
+            (b_rect_old[1] + b_rect_old[3] / 2)]).astype(int)
+    direction = xy - xy_old
+    theta = np.arctan(direction[1] / direction[0])
+    return np.array([xy[0], xy[1], theta, 0])
 
-    # KCF object tracking
+def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner, goal):
+    bridge = CvBridge()
+    tracking_rect, image_2 =  localize_robot_initial_track_rect(bridge, camera_image_topic, camera_info_topic)
 
-    tracking_rect = (lcbb_x, lcbb_y, lcbb_w, lcbb_h)
+    # KCF object tracking, get the initial theta state of robot needs two timestep approximation
     tracker = cv2.TrackerKCF_create()
     tracker.init(image_2, tracking_rect)
+    image = rospy.wait_for_message(camera_image_topic, Image)
+    mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
+    last_track_rect = tracking_rect
+    err_code, tracking_rect = tracker.update(mat)
+    init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
+    if not SYSTEM_ID_MODE:
+        plan = planner.plan_to_pose(init_robot_state, goal, dt=0.1, prefix_time_length=1)
+        planner.plot_execution()
 
     xys = []
     t = 0 
-
-    last_track_rect = None 
+    total_time = 5
     while not rospy.is_shutdown() and t < 10 * total_time: 
         image = rospy.wait_for_message(camera_image_topic, Image)
         mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
-        if not last_track_rect: 
-            err_code, tracking_rect = tracker.update(mat)
-            last_track_rect = tracking_rect
-        else: 
-            last_track_rect = tracking_rect
-            err_code, tracking_rect = tracker.update(mat)
+        last_track_rect = tracking_rect
+        err_code, tracking_rect = tracker.update(mat)
         
         mat = cv2.rectangle(mat, (int(tracking_rect[0]), int(tracking_rect[1])), (int(tracking_rect[0] + tracking_rect[2]), int(tracking_rect[1] + tracking_rect[3])), 255, thickness=2)
-
-
-
         xy =  np.array([(tracking_rect[0] + tracking_rect[2] / 2), 
                         (tracking_rect[1] + tracking_rect[3] / 2)]).astype(int)
         xy_old =  np.array([(last_track_rect[0] + last_track_rect[2] / 2), 
                 (last_track_rect[1] + last_track_rect[3] / 2)]).astype(int)
         arrow_end = xy + 5 * (xy - xy_old)
         mat = cv2.arrowedLine(mat, tuple(xy_old), tuple(arrow_end), (0, 255, 0), thickness=3)
-        #cv2.imwrite("tracking.png", mat)
+        mat = cv2.circle(mat, tuple(goal[:2]), radius=15, color=(0, 0, 255), thickness=3)
+        mat = cv2.circle(mat, tuple(init_robot_state[:2].astype(int)), radius=15, color=(0, 255, 255), thickness=3)
         cv2.imshow("Camera Tracking", mat)
-        cv2.waitKey(30)
+        cv2.waitKey(10)
         
-        
-        xys.append(xy)
+        if SYSTEM_ID_MODE:
+            xys.append(xy)
         t += 1
-    plt.figure()
-    xys = np.array(xys)
-    #np.savetxt("./src/proj2_pkg/src/proj2/data/forward.txt", xys)
+    if SYSTEM_ID_MODE:
+        xys = np.array(xys)
+        np.savetxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt", xys)
 
 if __name__ == '__main__':
     rospy.init_node("main")
@@ -126,8 +115,16 @@ if __name__ == '__main__':
     camera_info = '/usb_cam/camera_info'
     camera_frame = '/usb_cam'
     
-    if system_id_mode:
-        # do system id
-        perform_sys_id(camera_topic, camera_info, camera_frame)
-    else:
-        pass
+
+    goal = np.array([1000, 600, 0, 0])
+    # config = BicycleConfigurationSpace( low_lims = [0, 0, -1000, -1000],
+    #                                     high_lims = [1280, 720, 1000, 1000],
+    #                                     input_low_lims = [-float('inf'), -float('inf')],
+    #                                     input_high_lims = [float('inf'), float('inf')],
+    #                                     obstacles = [],
+    #                                     robot_radius = 10,
+    #                                     primitive_duration = 1.5)
+    config = None 
+    planner = RRTPlanner(config, expand_dist=20, max_iter=5000)
+
+    online_planning(camera_topic, camera_info, camera_frame, planner, goal)

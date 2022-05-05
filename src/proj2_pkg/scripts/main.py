@@ -20,8 +20,8 @@ def parse_args():
     Pretty self explanatory tbh
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-x', type=float, default=200, help='Desired position in x')
-    parser.add_argument('-y', type=float, default=200, help='Desired position in y')
+    parser.add_argument('-x', type=float, default=1000, help='Desired position in x')
+    parser.add_argument('-y', type=float, default=600, help='Desired position in y')
     parser.add_argument('-theta', type=float, default=0.0, help='Desired angle')
     parser.add_argument('-phi', type=float, default=0.0, help='Desired angle of the (imaginary) steering wheel')
     return parser.parse_args()

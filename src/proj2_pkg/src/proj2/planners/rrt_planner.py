@@ -74,13 +74,42 @@ class RRTPlanner(object):
             delta_path = path.get_prefix(prefix_time_length)
             new_config = delta_path.end_position()
             self.graph.add_node(new_config, closest_config, delta_path)
-            if len(self.graph.nodes) % 500 == 0:
-                self.plot_execution()
+            #if len(self.graph.nodes) % 500 == 0:
+            #    self.plot_execution()
             if self.config_space.distance(new_config, goal) <= self.expand_dist:
                 self.plan = self.graph.construct_path_to(new_config)
                 return self.plan
         print("Failed to find plan in allotted number of iterations.")
         return None
+
+
+    def execute_plan(self, plan):
+        """
+        Executes a plan made by the planner
+
+        Parameters
+        ----------
+        plan : :obj: Plan. See configuration_space.Plan
+        """
+        if len(plan) == 0:
+            return
+        rate = rospy.Rate(int(1 / plan.dt))
+        start_t = rospy.Time.now()
+        while not rospy.is_shutdown():
+            t = (rospy.Time.now() - start_t).to_sec()
+            if t > plan.times[-1]:
+                break
+            state, cmd = plan.get(t)
+            if cmd[1] == self.phi2 and (self.since_last_clap > self.primitive_duration or self.was_forward):
+                self.clap()
+                self.since_last_clap = 0
+                self.was_forward = False  
+            elif cmd[1] == self.phi1:
+                self.was_forward = True 
+            else:
+                self.since_last_clap += plan.dt 
+                self.was_forward = False 
+            rate.sleep()
 
     def plot_execution(self):
         """

@@ -262,10 +262,16 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.robot_length = 1
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
-        forward_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/forward.txt")
-        curved_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/curved.txt")
+        forward_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/forward_may_4.txt")
+        curved_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt")
+
         (self.phi1, self.v1) = analysis.determine_phi_v_primitives(forward_data)
+        self.phi1 /= 2 
         (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)
+        self.phi2 /= 2
+        rospy.logwarn(str(self.phi1) + " , " + str(self.v1))
+        rospy.logwarn("gap")
+        rospy.logwarn(str(self.phi2) + " , " + str(self.v2))
         self.primitive_duration = primitive_duration
 
         # scaling by 10 pixels per dt
