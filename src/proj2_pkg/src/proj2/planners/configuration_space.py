@@ -269,12 +269,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.phi1 /= 2 
         (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)
         self.phi2 /= 2
-        rospy.logwarn(str(self.phi1) + " , " + str(self.v1))
-        rospy.logwarn("gap")
-        rospy.logwarn(str(self.phi2) + " , " + str(self.v2))
         self.primitive_duration = primitive_duration
-
-        # scaling by 10 pixels per dt
 
     def distance(self, c1, c2):
         """
@@ -364,25 +359,24 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             target_positions = np.zeros((timesteps, 4))
             target_positions[0, :] = c1 # starting position 
             for t in range(1, timesteps):
-                x, y, theta, phi = target_positions[t-1, :]
-                speeds = np.array([np.cos(theta), np.sin(theta), 1/self.robot_length * np.tan(ol_inputs[t, 1]), 0]) * ol_inputs[t, 0] 
+                x, y, theta, _ = target_positions[t-1, :]
+                speeds = np.array([np.cos(theta), np.sin(theta), 0, 0]) * ol_inputs[t, 0] 
                 target_positions[t, :] = target_positions[t-1, :] + speeds * dt 
-                target_positions[t, 3] = phi
+                target_positions[t, 2] += ol_input[t, 1]
             return target_positions
 
         input_primitives = {
             'forward': np.vstack((self.v1 * np.ones(timesteps), self.phi1 * np.ones(timesteps))).T,
             'back_j': np.vstack((self.v2 * -1 * np.ones(timesteps), self.phi2 * np.ones(timesteps))).T
         }
-        # rospy.logwarn("phis are: %f, %f" % (self.phi1, self.phi2))
-
+        
+        
         min_d = float('inf')
         closest_plan = None
         for name in input_primitives:
             ol_input = input_primitives[name]
             target_positions = generate_target_positions(ol_input)
-            #rospy.logwarn("start config: " + str(c1)) 
-            #rospy.logwarn("target configs: " + str(target_positions[-1))
+            rospy.logwarn("phis are: %s" % (str(target_positions)))
             plan = Plan(times, target_positions, ol_input, dt=dt)
             d = self.distance(plan.end_position(), c2)
             if d < min_d:

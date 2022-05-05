@@ -68,14 +68,14 @@ class RRTPlanner(object):
             if self.config_space.check_collision(rand_config):
                 continue
             closest_config = self.config_space.nearest_config_to(self.graph.nodes, rand_config)
-            path = self.config_space.local_plan(closest_config, rand_config)
+            path = self.config_space.local_plan(closest_config, rand_config, dt=dt)
             if self.config_space.check_path_collision(path):
                 continue
             delta_path = path.get_prefix(prefix_time_length)
             new_config = delta_path.end_position()
             self.graph.add_node(new_config, closest_config, delta_path)
-            #if len(self.graph.nodes) % 500 == 0:
-            #    self.plot_execution()
+            if len(self.graph.nodes) % 500 == 0:
+                self.plot_execution()
             if self.config_space.distance(new_config, goal) <= self.expand_dist:
                 self.plan = self.graph.construct_path_to(new_config)
                 return self.plan

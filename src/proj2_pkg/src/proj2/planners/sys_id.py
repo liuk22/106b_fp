@@ -13,6 +13,7 @@ from proj2.planners import RRTPlanner, BicycleConfigurationSpace
 from proj2.controller import BicycleModelController
 
 SYSTEM_ID_MODE = False
+GLOBAL_DT = 0.2
 
 def transform_to_posestamped(transform):
     """
@@ -61,7 +62,7 @@ def two_rects_to_state(b_rect_new, b_rect_old):
     xy_old =  np.array([(b_rect_old[0] + b_rect_old[2] / 2), 
             (b_rect_old[1] + b_rect_old[3] / 2)]).astype(int)
     direction = xy - xy_old
-    theta = np.arctan(direction[1] / direction[0])
+    theta = np.arctan2(direction[1], direction[0])
     return np.array([xy[0], xy[1], theta, 0])
 
 def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner, goal):
@@ -77,8 +78,7 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
     err_code, tracking_rect = tracker.update(mat)
     init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
     if not SYSTEM_ID_MODE:
-        plan = planner.plan_to_pose(init_robot_state, goal, dt=0.1, prefix_time_length=1)
-        planner.plot_execution()
+        plan = planner.plan_to_pose(init_robot_state, goal, dt=GLOBAL_DT)
 
     xys = []
     t = 0 
@@ -103,7 +103,7 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
         
         if SYSTEM_ID_MODE:
             xys.append(xy)
-        t += 1
+            t += 1
     if SYSTEM_ID_MODE:
         xys = np.array(xys)
         np.savetxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt", xys)
@@ -117,14 +117,13 @@ if __name__ == '__main__':
     
 
     goal = np.array([1000, 600, 0, 0])
-    # config = BicycleConfigurationSpace( low_lims = [0, 0, -1000, -1000],
-    #                                     high_lims = [1280, 720, 1000, 1000],
-    #                                     input_low_lims = [-float('inf'), -float('inf')],
-    #                                     input_high_lims = [float('inf'), float('inf')],
-    #                                     obstacles = [],
-    #                                     robot_radius = 10,
-    #                                     primitive_duration = 1.5)
-    config = None 
+    config = BicycleConfigurationSpace( low_lims = [0, 0, -1000, -1000],
+                                        high_lims = [1280, 720, 1000, 1000],
+                                         input_low_lims = [-float('inf'), -float('inf')],
+                                         input_high_lims = [float('inf'), float('inf')],
+                                         obstacles = [],
+                                         robot_radius = 10,
+                                         primitive_duration = 1.5)
     planner = RRTPlanner(config, expand_dist=20, max_iter=5000)
 
     online_planning(camera_topic, camera_info, camera_frame, planner, goal)
