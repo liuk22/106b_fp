@@ -131,7 +131,7 @@ def plot_pos_and_phi_v_clusters(position_data):
       #     return 1/r
 
 if __name__ == "__main__": 
-    position_data = np.loadtxt("../data/backward_may_4.txt")
+    position_data = np.loadtxt("../data/forward_may_4.txt")
     #curvature_fit(position_data)
     print(determine_phi_v_primitives(position_data))
     plot_pos_and_phi_v_clusters(position_data)

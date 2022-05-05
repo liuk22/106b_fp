@@ -12,7 +12,7 @@ import rospy
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
+from configuration_space import HexbugConfigurationSpace, Plan
 
 class RRTGraph(object):
 
@@ -49,7 +49,7 @@ class RRTPlanner(object):
         self.expand_dist = expand_dist
 
 
-    def plan_to_pose(self, start, goal, dt=0.1, prefix_time_length=100):
+    def plan_to_pose(self, start, goal, prefix_time_length=100):
         """
             Uses the RRT algorithm to plan from the start configuration
             to the goal configuration.
@@ -68,14 +68,12 @@ class RRTPlanner(object):
             if self.config_space.check_collision(rand_config):
                 continue
             closest_config = self.config_space.nearest_config_to(self.graph.nodes, rand_config)
-            path = self.config_space.local_plan(closest_config, rand_config, dt=dt)
+            path = self.config_space.local_plan(closest_config, rand_config)
             if self.config_space.check_path_collision(path):
                 continue
             delta_path = path.get_prefix(prefix_time_length)
             new_config = delta_path.end_position()
             self.graph.add_node(new_config, closest_config, delta_path)
-            if len(self.graph.nodes) % 500 == 0:
-                self.plot_execution()
             if self.config_space.distance(new_config, goal) <= self.expand_dist:
                 self.plan = self.graph.construct_path_to(new_config)
                 return self.plan
@@ -93,7 +91,7 @@ class RRTPlanner(object):
         """
         if len(plan) == 0:
             return
-        rate = rospy.Rate(int(1 / plan.dt))
+        rate = rospy.Rate(10) # Magic number here
         start_t = rospy.Time.now()
         while not rospy.is_shutdown():
             t = (rospy.Time.now() - start_t).to_sec()
@@ -107,7 +105,7 @@ class RRTPlanner(object):
             elif cmd[1] == self.phi1:
                 self.was_forward = True 
             else:
-                self.since_last_clap += plan.dt 
+                self.since_last_clap += 1
                 self.was_forward = False 
             rate.sleep()
 

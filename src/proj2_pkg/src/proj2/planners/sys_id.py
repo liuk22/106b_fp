@@ -9,8 +9,7 @@ import rospy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image, CameraInfo
-from proj2.planners import RRTPlanner, BicycleConfigurationSpace
-from proj2.controller import BicycleModelController
+from proj2.planners import RRTPlanner, HexbugConfigurationSpace
 
 SYSTEM_ID_MODE = False
 GLOBAL_DT = 0.2
@@ -63,7 +62,13 @@ def two_rects_to_state(b_rect_new, b_rect_old):
             (b_rect_old[1] + b_rect_old[3] / 2)]).astype(int)
     direction = xy - xy_old
     theta = np.arctan2(direction[1], direction[0])
-    return np.array([xy[0], xy[1], theta, 0])
+    return np.array([xy[0], xy[1], theta + np.pi, 0])
+
+def show_cv2_plan(mat, plan, planner):
+    for t, p, c in plan:
+        center = tuple(planner.config_space.config2image_coords(p[:2].astype(int)))
+        mat = cv2.circle(mat, center=center, radius=1, color=(0, 165, 255), thickness=1)
+    return mat 
 
 def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner, goal):
     bridge = CvBridge()
@@ -75,10 +80,14 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
     image = rospy.wait_for_message(camera_image_topic, Image)
     mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
     last_track_rect = tracking_rect
+    for _ in range(3):
+        image = rospy.wait_for_message(camera_image_topic, Image)
+    image = rospy.wait_for_message(camera_image_topic, Image)
+    mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
     err_code, tracking_rect = tracker.update(mat)
     init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
     if not SYSTEM_ID_MODE:
-        plan = planner.plan_to_pose(init_robot_state, goal, dt=GLOBAL_DT)
+        plan = planner.plan_to_pose(init_robot_state, goal)
 
     xys = []
     t = 0 
@@ -96,14 +105,23 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
                 (last_track_rect[1] + last_track_rect[3] / 2)]).astype(int)
         arrow_end = xy + 5 * (xy - xy_old)
         mat = cv2.arrowedLine(mat, tuple(xy_old), tuple(arrow_end), (0, 255, 0), thickness=3)
-        mat = cv2.circle(mat, tuple(goal[:2]), radius=15, color=(0, 0, 255), thickness=3)
-        mat = cv2.circle(mat, tuple(init_robot_state[:2].astype(int)), radius=15, color=(0, 255, 255), thickness=3)
+        
+
+        goal_in_img = planner.config_space.config2image_coords(goal[:2])
+        init_robot_state_in_img = planner.config_space.config2image_coords(init_robot_state[:2].astype(int))
+        mat = cv2.circle(mat, tuple(goal_in_img), radius=15, color=(0, 0, 255), thickness=3)
+        mat = cv2.circle(mat, tuple(init_robot_state_in_img), radius=15, color=(0, 255, 255), thickness=3)
+        mat = show_cv2_plan(mat, plan, planner)
+        
+        if t == 0:
+            cv2.imwrite("opencv_rrt.png", mat)
         cv2.imshow("Camera Tracking", mat)
+
         cv2.waitKey(10)
         
         if SYSTEM_ID_MODE:
             xys.append(xy)
-            t += 1
+        t += 1
     if SYSTEM_ID_MODE:
         xys = np.array(xys)
         np.savetxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt", xys)
@@ -116,14 +134,14 @@ if __name__ == '__main__':
     camera_frame = '/usb_cam'
     
 
-    goal = np.array([1000, 600, 0, 0])
-    config = BicycleConfigurationSpace( low_lims = [0, 0, -1000, -1000],
+    goal = np.array([280, 120, 0, 0])
+    config = HexbugConfigurationSpace( low_lims = [0, 0, -1000, -1000],
                                         high_lims = [1280, 720, 1000, 1000],
                                          input_low_lims = [-float('inf'), -float('inf')],
                                          input_high_lims = [float('inf'), float('inf')],
                                          obstacles = [],
                                          robot_radius = 10,
-                                         primitive_duration = 1.5)
-    planner = RRTPlanner(config, expand_dist=20, max_iter=5000)
+                                         primitive_duration = 15)
+    planner = RRTPlanner(config, expand_dist=50, max_iter=500)
 
     online_planning(camera_topic, camera_info, camera_frame, planner, goal)

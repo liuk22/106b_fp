@@ -26,8 +26,7 @@ class Plan(object):
           method.
     """
 
-    def __init__(self, times, target_positions, open_loop_inputs, dt=0.1):
-        self.dt = dt
+    def __init__(self, times, target_positions, open_loop_inputs):
         self.times = times
         self.positions = target_positions
         self.open_loop_inputs = open_loop_inputs
@@ -70,8 +69,6 @@ class Plan(object):
         def chain_two_paths(path1, path2):
             """Chains together two plans to create a single plan. Requires
             that path1 ends at the same configuration that path2 begins at.
-            Also requires that both paths have the same discretization time
-            step dt.
             """
             if not path1 and not path2:
                 return None
@@ -79,13 +76,12 @@ class Plan(object):
                 return path2
             elif not path2:
                 return path1
-            assert path1.dt == path2.dt, "Cannot append paths with different time deltas."
             assert np.allclose(path1.end_position(), path2.start_position()), "Cannot append paths with inconsistent start and end positions."
             times = np.concatenate((path1.times, path1.times[-1] + path2.times[1:]), axis=0)
             positions = np.concatenate((path1.positions, path2.positions[1:]), axis=0)
             open_loop_inputs = np.concatenate((path1.open_loop_inputs, path2.open_loop_inputs[1:]), axis=0)
-            dt = path1.dt
-            return Plan(times, positions, open_loop_inputs, dt=dt)
+
+            return Plan(times, positions, open_loop_inputs)
         chained_path = None
         for path in paths:
             chained_path = chain_two_paths(chained_path, path)
@@ -126,7 +122,7 @@ class ConfigurationSpace(object):
         file which inherits from this class.
     """
 
-    def __init__(self, dim, low_lims, high_lims, obstacles, dt=0.01):
+    def __init__(self, dim, low_lims, high_lims, obstacles):
         """
         Parameters
         ----------
@@ -140,14 +136,13 @@ class ConfigurationSpace(object):
             model, we assume each obstacle is a circle in x, y space, and then
             obstacles is a list of [x, y, r] lists specifying the center and 
             radius of each obstacle.
-        dt: The discretization timestep our local planner should use when constructing
-            plans.
+
         """
         self.dim = dim
         self.low_lims = np.array(low_lims)
         self.high_lims = np.array(high_lims)
         self.obstacles = obstacles
-        self.dt = dt
+
 
     def distance(self, c1, c2):
         """
@@ -210,44 +205,7 @@ class ConfigurationSpace(object):
         """
         return min(config_list, key=lambda c: self.distance(c, config))
 
-class FreeEuclideanSpace(ConfigurationSpace):
-    """
-        Example implementation of a configuration space. This class implements
-        a configuration space representing free n dimensional euclidean space.
-    """
-
-    def __init__(self, dim, low_lims, high_lims, sec_per_meter=4):
-        super(FreeEuclideanSpace, self).__init__(dim, low_lims, high_lims, [])
-        self.sec_per_meter = sec_per_meter
-
-    def distance(self, c1, c2):
-        """
-        c1 and c2 should by numpy.ndarrays of size (dim, 1) or (1, dim) or (dim,).
-        """
-        return np.linalg.norm(c1 - c2)
-
-    def sample_config(self, *args):
-        return np.random.uniform(self.low_lims, self.high_lims).reshape((self.dim,))
-
-    def check_collision(self, c):
-        return False
-
-    def check_path_collision(self, path):
-        return False
-
-    def local_plan(self, c1, c2):
-        v = c2 - c1
-        dist = np.linalg.norm(c1 - c2)
-        total_time = dist * self.sec_per_meter
-        vel = v / total_time
-        p = lambda t: (1 - (t / total_time)) * c1 + (t / total_time) * c2
-        times = np.arange(0, total_time, self.dt)
-        positions = p(times[:, None])
-        velocities = np.tile(vel, (positions.shape[0], 1))
-        plan = Plan(times, positions, velocities, dt=self.dt)
-        return plan
-
-class BicycleConfigurationSpace(ConfigurationSpace):
+class HexbugConfigurationSpace(ConfigurationSpace):
     """
         The configuration space for a Bicycle modeled robot
         Obstacles should be tuples (x, y, r), representing circles of 
@@ -257,7 +215,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
     """
     def __init__(self, low_lims, high_lims, input_low_lims, input_high_lims, obstacles, robot_radius, primitive_duration):
         dim = 4
-        super(BicycleConfigurationSpace, self).__init__(dim, low_lims, high_lims, obstacles)
+        super(HexbugConfigurationSpace, self).__init__(dim, low_lims, high_lims, obstacles)
         self.robot_radius = robot_radius
         self.robot_length = 1
         self.input_low_lims = input_low_lims
@@ -266,10 +224,16 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         curved_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt")
 
         (self.phi1, self.v1) = analysis.determine_phi_v_primitives(forward_data)
-        self.phi1 /= 2 
+        
         (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)
-        self.phi2 /= 2
+
         self.primitive_duration = primitive_duration
+
+    def config2image_coords(self, config_xy):
+        new_xy = config_xy.copy()
+        #new_xy[1] = self.high_lims[1] - config_xy[1]
+        return new_xy
+
 
     def distance(self, c1, c2):
         """
@@ -339,7 +303,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
                 return True
         return False
 
-    def local_plan(self, c1, c2, dt=0.1):
+    def local_plan(self, c1, c2):
         """
         Constructs a local plan from c1 to c2. Usually, you want to
         just come up with any plan without worrying about obstacles,
@@ -351,8 +315,8 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         c1 = np.array(c1)
         c2 = np.array(c2)
-        timesteps = int((self.primitive_duration / dt) + 1)
-        times = np.linspace(0, self.primitive_duration, timesteps) # dt = 0.-1 default 
+        timesteps = int(self.primitive_duration + 1)
+        times = np.linspace(0, self.primitive_duration, timesteps)
         
         # Create a set of motion primitives from c1.
         def generate_target_positions(ol_inputs):
@@ -360,9 +324,10 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             target_positions[0, :] = c1 # starting position 
             for t in range(1, timesteps):
                 x, y, theta, _ = target_positions[t-1, :]
+                theta += ol_input[t, 1]
                 speeds = np.array([np.cos(theta), np.sin(theta), 0, 0]) * ol_inputs[t, 0] 
-                target_positions[t, :] = target_positions[t-1, :] + speeds * dt 
-                target_positions[t, 2] += ol_input[t, 1]
+                target_positions[t, :] = target_positions[t-1, :] + speeds * 1
+                target_positions[t, 2] = theta
             return target_positions
 
         input_primitives = {
@@ -370,14 +335,12 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             'back_j': np.vstack((self.v2 * -1 * np.ones(timesteps), self.phi2 * np.ones(timesteps))).T
         }
         
-        
         min_d = float('inf')
         closest_plan = None
         for name in input_primitives:
             ol_input = input_primitives[name]
             target_positions = generate_target_positions(ol_input)
-            rospy.logwarn("phis are: %s" % (str(target_positions)))
-            plan = Plan(times, target_positions, ol_input, dt=dt)
+            plan = Plan(times, target_positions, ol_input)
             d = self.distance(plan.end_position(), c2)
             if d < min_d:
                 min_d = d
