@@ -224,7 +224,7 @@ class HexbugConfigurationSpace(ConfigurationSpace):
         curved_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt")
 
         (self.phi1, self.v1) = analysis.determine_phi_v_primitives(forward_data)
-        
+        self.phi1 *= -1 # vision shows it's going wrong way
         (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)
 
         self.primitive_duration = primitive_duration

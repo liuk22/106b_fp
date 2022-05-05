@@ -72,6 +72,7 @@ def show_cv2_plan(mat, plan, planner):
 
 def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner, goal):
     bridge = CvBridge()
+    vw = cv2.VideoWriter('output_2.mp4',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (planner.config_space.high_lims[0], planner.config_space.high_lims[1]))
     tracking_rect, image_2 =  localize_robot_initial_track_rect(bridge, camera_image_topic, camera_info_topic)
 
     # KCF object tracking, get the initial theta state of robot needs two timestep approximation
@@ -92,7 +93,7 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
     xys = []
     t = 0 
     total_time = 5
-    while not rospy.is_shutdown() and t < 10 * total_time: 
+    while not rospy.is_shutdown(): # and t < 10 * total_time: 
         image = rospy.wait_for_message(camera_image_topic, Image)
         mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
         last_track_rect = tracking_rect
@@ -115,6 +116,7 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
         
         if t == 0:
             cv2.imwrite("opencv_rrt.png", mat)
+        vw.write(mat)
         cv2.imshow("Camera Tracking", mat)
 
         cv2.waitKey(10)
@@ -122,6 +124,8 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
         if SYSTEM_ID_MODE:
             xys.append(xy)
         t += 1
+    vw.release()
+
     if SYSTEM_ID_MODE:
         xys = np.array(xys)
         np.savetxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt", xys)
