@@ -5,7 +5,6 @@ Author: Chris Correa.
 Adapted for Spring 2020 by Amay Saxena
 """
 import numpy as np
-from trimesh import proximity
 from scipy.spatial.transform import Rotation
 
 def find_intersections(mesh, p1, p2):
@@ -62,26 +61,6 @@ def find_grasp_vertices(mesh, p1, p2):
         multiple_hits=False)
     return locations, face_ind
 
-def normal_at_point(mesh, p):
-    """
-    Returns the normal vector to the mesh at a point p.
-    Requires that p is a point on the surface of the mesh (or at least
-    that it is very close to a point on the surface).
-    
-    Parameters
-    ----------
-    mesh (trimesh.base.Trimesh): mesh of the object
-    p (3x np.ndarray): point to get normal at
-
-    Returns
-    -------
-    (3x np.ndarray): surface normal at p
-    """
-    point, dist, face = proximity.closest_point(mesh, [p])
-    if dist > 0.001:
-        print("Input point is not on the surface of the mesh!")
-        return None
-    return mesh.face_normals[face[0]]
 
 def normalize(vec):
     """

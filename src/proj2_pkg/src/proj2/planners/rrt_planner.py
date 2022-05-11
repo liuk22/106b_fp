@@ -8,7 +8,6 @@ import sys
 import time
 
 from sklearn import random_projection
-import rospy
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
@@ -61,9 +60,6 @@ class RRTPlanner(object):
         for it in range(self.max_iter):
             sys.stdout.write("\033[F")
             print("Iteration:", it + 1)
-            if rospy.is_shutdown():
-                print("Stopping path planner.")
-                break
             rand_config = self.config_space.sample_config(goal, self.graph.nodes) # ADD EXISTING POINTS AS A SECOND ARG HERE
             if self.config_space.check_collision(rand_config):
                 continue
@@ -91,10 +87,10 @@ class RRTPlanner(object):
         """
         if len(plan) == 0:
             return
-        rate = rospy.Rate(10) # Magic number here
-        start_t = rospy.Time.now()
-        while not rospy.is_shutdown():
-            t = (rospy.Time.now() - start_t).to_sec()
+        rate = 0.1 # Magic number here
+        start_t = time.time()
+        while True:
+            t = (time.time() - start_t)
             if t > plan.times[-1]:
                 break
             state, cmd = plan.get(t)

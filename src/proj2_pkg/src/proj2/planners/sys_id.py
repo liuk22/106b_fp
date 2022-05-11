@@ -1,47 +1,20 @@
 #!/usr/bin/env python
 import numpy as np
 import cv2
-from utils.utils import * 
+from utils import * 
 import matplotlib.pyplot as plt
-
-
-import rospy
-from cv_bridge import CvBridge
-from geometry_msgs.msg import PoseStamped
-from sensor_msgs.msg import Image, CameraInfo
-from proj2.planners import RRTPlanner, HexbugConfigurationSpace
+from rrt_planner import RRTPlanner
+from configuration_space import HexbugConfigurationSpace
 
 SYSTEM_ID_MODE = False
 GLOBAL_DT = 0.2
 
-def transform_to_posestamped(transform):
-    """
-    SE(3) transform to PoseStamped
-    """
-    ps = PoseStamped()
-    ps.pose.position.x = transform[0, 3] # 0.827 
-    ps.pose.position.y = transform[1, 3] # -0.380
-    ps.pose.position.z = transform[2, 3] # -0.209 
-
-    quat = quaternion_from_matrix(transform[:3, :3])
-    ps.pose.orientation.x = quat[0] # 0 #
-    ps.pose.orientation.y = quat[1] # 1 #
-    ps.pose.orientation.z = quat[2] # 0 #
-    ps.pose.orientation.w = quat[3] # 0 #
-
-    ps.header.frame_id = 'base'
-    return ps 
-
-def localize_robot_initial_track_rect(cv_bridge, camera_image_topic, camera_info_topic):
-    info = rospy.wait_for_message(camera_info_topic, CameraInfo)
-
+def localize_robot_initial_track_rect(vc):
     # use frame delta of first 2 frames and get bounding box 
-    image_1 = rospy.wait_for_message(camera_image_topic, Image)
-    image_1 = cv_bridge.imgmsg_to_cv2(image_1, desired_encoding='passthrough')
+    ret_1, image_1 = vc.read()
     image_1 = cv2.cvtColor(image_1, cv2.COLOR_BGR2GRAY)
 
-    image_2 = rospy.wait_for_message(camera_image_topic, Image)
-    image_2 = cv_bridge.imgmsg_to_cv2(image_2, desired_encoding='passthrough')
+    ret_2, image_2 = vc.read()
     image_2_gray = cv2.cvtColor(image_2, cv2.COLOR_BGR2GRAY)
 
     image_delta = cv2.absdiff(image_1, image_2_gray)
@@ -70,21 +43,18 @@ def show_cv2_plan(mat, plan, planner):
         mat = cv2.circle(mat, center=center, radius=1, color=(0, 165, 255), thickness=1)
     return mat 
 
-def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner, goal):
-    bridge = CvBridge()
-    vw = cv2.VideoWriter('output_2.mp4',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (planner.config_space.high_lims[0], planner.config_space.high_lims[1]))
-    tracking_rect, image_2 =  localize_robot_initial_track_rect(bridge, camera_image_topic, camera_info_topic)
+def online_planning(planner, goal):
+    video_capture = cv2.VideoCapture(1)
+    #vw = cv2.VideoWriter('output_2.mp4', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (planner.config_space.high_lims[0], planner.config_space.high_lims[1]))
+    tracking_rect, image_2 =  localize_robot_initial_track_rect(video_capture)
 
     # KCF object tracking, get the initial theta state of robot needs two timestep approximation
     tracker = cv2.TrackerKCF_create()
     tracker.init(image_2, tracking_rect)
-    image = rospy.wait_for_message(camera_image_topic, Image)
-    mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
     last_track_rect = tracking_rect
-    for _ in range(3):
-        image = rospy.wait_for_message(camera_image_topic, Image)
-    image = rospy.wait_for_message(camera_image_topic, Image)
-    mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
+    for _ in range(4):
+        ret, mat = video_capture.read()
+    ret, mat = video_capture.read()
     err_code, tracking_rect = tracker.update(mat)
     init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
     if not SYSTEM_ID_MODE:
@@ -93,9 +63,8 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
     xys = []
     t = 0 
     total_time = 5
-    while not rospy.is_shutdown(): # and t < 10 * total_time: 
-        image = rospy.wait_for_message(camera_image_topic, Image)
-        mat = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
+    while True: # and t < 10 * total_time: 
+        ret, mat = video_capture.read()
         last_track_rect = tracking_rect
         err_code, tracking_rect = tracker.update(mat)
         
@@ -116,7 +85,7 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
         
         if t == 0:
             cv2.imwrite("opencv_rrt.png", mat)
-        vw.write(mat)
+        #vw.write(mat)
         cv2.imshow("Camera Tracking", mat)
 
         cv2.waitKey(10)
@@ -131,13 +100,6 @@ def online_planning(camera_image_topic, camera_info_topic, camera_frame, planner
         np.savetxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt", xys)
 
 if __name__ == '__main__':
-    rospy.init_node("main")
-
-    camera_topic = '/usb_cam/image_raw'
-    camera_info = '/usb_cam/camera_info'
-    camera_frame = '/usb_cam'
-    
-
     goal = np.array([280, 120, 0, 0])
     config = HexbugConfigurationSpace( low_lims = [0, 0, -1000, -1000],
                                         high_lims = [1280, 720, 1000, 1000],
@@ -148,4 +110,4 @@ if __name__ == '__main__':
                                          primitive_duration = 15)
     planner = RRTPlanner(config, expand_dist=50, max_iter=500)
 
-    online_planning(camera_topic, camera_info, camera_frame, planner, goal)
+    online_planning(planner, goal)

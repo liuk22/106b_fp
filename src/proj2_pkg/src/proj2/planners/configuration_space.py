@@ -5,12 +5,8 @@ Starter code for EECS C106B Spring 2020 Project 2.
 Author: Amay Saxena
 """
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.integrate import odeint
 from contextlib import contextmanager
-from sklearn.mixture import GMM
 import analysis
-import rospy
 
 class Plan(object):
     """Data structure to represent a motion plan. Stores plans in the form of
@@ -220,8 +216,8 @@ class HexbugConfigurationSpace(ConfigurationSpace):
         self.robot_length = 1
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
-        forward_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/forward_may_4.txt")
-        curved_data = np.loadtxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt")
+        forward_data = np.loadtxt("../data/forward_may_4.txt")
+        curved_data = np.loadtxt("../data/backward_may_4.txt")
 
         (self.phi1, self.v1) = analysis.determine_phi_v_primitives(forward_data)
         self.phi1 *= -1 # vision shows it's going wrong way

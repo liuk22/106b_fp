@@ -1,7 +1,7 @@
 from turtle import position
 import matplotlib.pyplot as plt 
 import numpy as np
-from sklearn.mixture import GMM
+from sklearn.mixture import GaussianMixture
 from matplotlib.patches import Ellipse
 import casadi
 
@@ -64,7 +64,7 @@ def draw_ellipse(position, covariance, ax=None, **kwargs):
 
 def determine_phi_v_primitives(position_data):
     X = analyze(position_data)
-    gmm = GMM(n_components=1, covariance_type='full')
+    gmm = GaussianMixture(n_components=1, covariance_type='full')
     gmm.fit(X)
     #(phi1, v1), (phi2, v2) = gmm.means_
     (phi, v) = gmm.means_[0]
@@ -81,7 +81,7 @@ def plot_pos_and_phi_v_clusters(position_data):
 
     X = analyze(position_data)
 
-    gmm = GMM(n_components=1, covariance_type='full',random_state=32)
+    gmm = GaussianMixture(n_components=1, covariance_type='full',random_state=32)
     ax[1].set_xlim([-1, 5])
     labels = gmm.fit(X).predict(X)
     ax[1].scatter(X[:, 0], X[:, 1], c=labels, s=40, cmap='viridis', zorder=2)
