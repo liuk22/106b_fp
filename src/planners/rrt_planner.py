@@ -6,12 +6,12 @@ Author: Amay Saxena
 """
 import sys
 import time
-
-from sklearn import random_projection
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from configuration_space import HexbugConfigurationSpace, Plan
+import pydub
+import pydub.playback
 
 class RRTGraph(object):
 
@@ -46,6 +46,9 @@ class RRTPlanner(object):
         # Exit the algorithm once a node is sampled within this 
         # distance of the goal:
         self.expand_dist = expand_dist
+        self.audio_seg = pydub.AudioSegment.from_wav("clap.wav")
+        self.audio_seg = self.audio_seg[2000:3000]
+        self.audio_seg.apply_gain(20)
 
 
     def plan_to_pose(self, start, goal, prefix_time_length=100):
@@ -103,7 +106,10 @@ class RRTPlanner(object):
             else:
                 self.since_last_clap += 1
                 self.was_forward = False 
-            rate.sleep()
+            time.sleep(rate)
+
+    def clap(self):
+        pydub.playback.play(self.audio_seg)
 
     def plot_execution(self):
         """
