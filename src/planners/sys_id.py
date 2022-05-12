@@ -59,14 +59,17 @@ def online_planning(planner, goal):
     init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
     if not SYSTEM_ID_MODE:
         plan = planner.plan_to_pose(init_robot_state, goal)
-
+        planner.execute_plan(plan)
     xys = []
     t = 0 
-    total_time = 5
+    replan_timestep_horizon = 20
     while True: # and t < 10 * total_time: 
         ret, mat = video_capture.read()
         last_track_rect = tracking_rect
         err_code, tracking_rect = tracker.update(mat)
+        if t % replan_timestep_horizon == 0:
+            plan = planner.plan_to_pose(init_robot_state, goal)
+            planner.execute_plan(plan)
         
         mat = cv2.rectangle(mat, (int(tracking_rect[0]), int(tracking_rect[1])), (int(tracking_rect[0] + tracking_rect[2]), int(tracking_rect[1] + tracking_rect[3])), 255, thickness=2)
         xy =  np.array([(tracking_rect[0] + tracking_rect[2] / 2), 
@@ -108,6 +111,6 @@ if __name__ == '__main__':
                                          obstacles = [],
                                          robot_radius = 10,
                                          primitive_duration = 15)
-    planner = RRTPlanner(config, expand_dist=50, max_iter=500)
+    planner = RRTPlanner(config, expand_dist=50, max_iter=100)
 
     online_planning(planner, goal)

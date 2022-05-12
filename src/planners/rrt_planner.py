@@ -49,6 +49,7 @@ class RRTPlanner(object):
         self.audio_seg = pydub.AudioSegment.from_wav("clap.wav")
         self.audio_seg = self.audio_seg[2000:3000]
         self.audio_seg.apply_gain(20)
+        self.since_last_clap = 0
 
 
     def plan_to_pose(self, start, goal, prefix_time_length=100):
@@ -98,11 +99,11 @@ class RRTPlanner(object):
             if t > plan.times[-1]:
                 break
             state, cmd = plan.get(t)
-            if cmd[1] == self.phi2 and (self.since_last_clap > self.primitive_duration or self.was_forward):
+            if cmd[1] == self.config_space.phi2 and (self.since_last_clap > self.config_space.primitive_duration or self.was_forward):
                 self.clap()
                 self.since_last_clap = 0
                 self.was_forward = False  
-            elif cmd[1] == self.phi1:
+            elif cmd[1] == self.config_space.phi1:
                 self.was_forward = True 
             else:
                 self.since_last_clap += 1
