@@ -5,6 +5,7 @@ from utils import *
 import matplotlib.pyplot as plt
 from rrt_planner import RRTPlanner
 from configuration_space import HexbugConfigurationSpace
+import time
 
 SYSTEM_ID_MODE = False
 GLOBAL_DT = 0.2
@@ -39,13 +40,15 @@ def two_rects_to_state(b_rect_new, b_rect_old):
 
 def show_cv2_plan(mat, plan, planner):
     visited_p = set() 
-    for t, p, c in plan:
-        center = tuple(planner.config_space.config2image_coords(p[:2]))
-        mat = cv2.circle(mat, center=center, radius=2, color=(0, 165, 255), thickness=2)
-        visited_p.add(str(p)) 
 
-    for plan in planner.graph.get_edge_paths():
+    if plan:
         for t, p, c in plan:
+            center = tuple(planner.config_space.config2image_coords(p[:2]))
+            mat = cv2.circle(mat, center=center, radius=2, color=(0, 165, 255), thickness=2)
+            visited_p.add(str(p)) 
+
+    for path in planner.graph.get_edge_paths():
+        for t, p, c in path:
             if str(p) not in visited_p:
                 center = tuple(planner.config_space.config2image_coords(p[:2]))
                 mat = cv2.circle(mat, center=center, radius=2, color=(203, 192, 255), thickness=2)
@@ -61,16 +64,16 @@ def online_planning(planner, goal):
     tracker = cv2.TrackerKCF_create()
     tracker.init(image_2, tracking_rect)
     last_track_rect = tracking_rect
-    for _ in range(4):
+    for _ in range(10):
         ret, mat = video_capture.read()
-    ret, mat = video_capture.read()
     err_code, tracking_rect = tracker.update(mat)
     init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
-    print(init_robot_state)
     replan_timestep_horizon = 20
     if not SYSTEM_ID_MODE:
+        t1 = time.time()
         plan = planner.plan_to_pose(tuple(init_robot_state), goal)
-        if plan:
+        print(f"planning with {planner.max_iter} max iterations took { time.time() - t1} seconds")
+        if plan: 
             planner.execute_plan(plan, replan_timestep_horizon)
         else:
             print("couldn't find plan")
@@ -81,8 +84,9 @@ def online_planning(planner, goal):
         ret, mat = video_capture.read()
         last_track_rect = tracking_rect
         err_code, tracking_rect = tracker.update(mat)
-        #if t == 0:
-        #    init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
+        if t == 50:
+            init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
+            break
         if t % replan_timestep_horizon == 0 and False:
             plan = planner.plan_to_pose(tuple(init_robot_state), goal, replan_timestep_horizon)
             if plan:
@@ -95,23 +99,23 @@ def online_planning(planner, goal):
                         (tracking_rect[1] + tracking_rect[3] / 2)]).astype(int)
         xy_old =  np.array([(last_track_rect[0] + last_track_rect[2] / 2), 
                 (last_track_rect[1] + last_track_rect[3] / 2)]).astype(int)
-        arrow_end = xy + 5 * (xy - xy_old)
+        arrow_end = xy + 10 * (xy - xy_old)
         mat = cv2.arrowedLine(mat, tuple(xy_old), tuple(arrow_end), (0, 255, 0), thickness=3)
         
 
         goal_in_img = planner.config_space.config2image_coords(goal[:2])
-        print("init robot state")
-        print(init_robot_state)
-
-        print("last track rect")
-        print(last_track_rect)
         init_robot_state_in_img = planner.config_space.config2image_coords(init_robot_state[:2].astype(int))
         mat = cv2.circle(mat, tuple(goal_in_img), radius=15, color=(0, 0, 255), thickness=3)
+        arrow_end = goal_in_img + 10 * np.array([np.cos(goal[2]), np.sin(goal[2])])
+        arrow_end = arrow_end.astype(int)
+        mat = cv2.arrowedLine(mat, tuple(goal_in_img), tuple(arrow_end), (255, 255, 0), thickness=3)
         mat = cv2.circle(mat, tuple(init_robot_state_in_img), radius=15, color=(0, 255, 255), thickness=3)
         mat = show_cv2_plan(mat, plan, planner)
         
-        if t == 0:
-            cv2.imwrite("opencv_rrt.png", mat)
+        if t == 2:
+            cv2.imwrite("timestep_2.png", mat)
+        if  t % replan_timestep_horizon == 0 and plan:
+            cv2.imwrite(f"timestep_{t}.png", mat)
         #vw.write(mat)
         cv2.imshow("Camera Tracking", mat)
 
@@ -120,21 +124,22 @@ def online_planning(planner, goal):
         if SYSTEM_ID_MODE:
             xys.append(xy)
         t += 1
-    vw.release()
+    #vw.release()
 
     if SYSTEM_ID_MODE:
         xys = np.array(xys)
         np.savetxt("./src/proj2_pkg/src/proj2/data/backward_may_4.txt", xys)
 
 if __name__ == '__main__':
-    goal = np.array([280, 120, 0, 0])
+    goal = np.array([150, 120, np.pi, 0])
     config = HexbugConfigurationSpace( low_lims = [0, 0, -1000, -1000],
                                         high_lims = [1280, 720, 1000, 1000],
                                          input_low_lims = [-float('inf'), -float('inf')],
                                          input_high_lims = [float('inf'), float('inf')],
                                          obstacles = [],
                                          robot_radius = 10,
-                                         primitive_duration = 15)
-    planner = RRTPlanner(config, expand_dist=50, max_iter=150)
+                                         primitive_duration = 15,
+                                         goal_bias=0.75)
+    planner = RRTPlanner(config, expand_dist=50, max_iter=200)
 
     online_planning(planner, goal)

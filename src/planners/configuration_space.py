@@ -209,7 +209,7 @@ class HexbugConfigurationSpace(ConfigurationSpace):
         We assume that the robot is circular and has radius equal to robot_radius
         The state of the robot is defined as (x, y, theta, phi).
     """
-    def __init__(self, low_lims, high_lims, input_low_lims, input_high_lims, obstacles, robot_radius, primitive_duration):
+    def __init__(self, low_lims, high_lims, input_low_lims, input_high_lims, obstacles, robot_radius, primitive_duration, goal_bias=0.5):
         dim = 4
         super(HexbugConfigurationSpace, self).__init__(dim, low_lims, high_lims, obstacles)
         self.robot_radius = robot_radius
@@ -224,6 +224,7 @@ class HexbugConfigurationSpace(ConfigurationSpace):
         (self.phi2, self.v2) = analysis.determine_phi_v_primitives(curved_data)
 
         self.primitive_duration = primitive_duration
+        self.goal_bias = goal_bias
 
     def config2image_coords(self, config_xy):
         new_xy = np.array(config_xy).astype(int)
@@ -256,7 +257,7 @@ class HexbugConfigurationSpace(ConfigurationSpace):
         which can be used to implement a goal-biasing heuristic.
         """
         # Use goal bias
-        p = 0.5
+        p = self.goal_bias
         goal = args[0]
         existing_pts = args[1]
         min_d = min([self.distance(xi, goal) for xi in existing_pts])
