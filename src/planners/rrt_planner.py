@@ -48,7 +48,7 @@ class RRTPlanner(object):
         self.expand_dist = expand_dist
         self.audio_seg = pydub.AudioSegment.from_wav("clap.wav")
         self.audio_seg = self.audio_seg[2000:3000]
-        self.audio_seg.apply_gain(20)
+        self.audio_seg.apply_gain(50)
         self.since_last_clap = 0
         self.was_forward = True # this might need to sensed
 

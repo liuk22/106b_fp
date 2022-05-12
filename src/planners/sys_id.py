@@ -57,7 +57,7 @@ def show_cv2_plan(mat, plan, planner):
 
 def online_planning(planner, goal):
     video_capture = cv2.VideoCapture(1)
-    #vw = cv2.VideoWriter('output_2.mp4', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (planner.config_space.high_lims[0], planner.config_space.high_lims[1]))
+    vw = cv2.VideoWriter('output_1.avi', cv2.VideoWriter_fourcc(*'MJPG'), 5, (640, 480))
     tracking_rect, image_2 =  localize_robot_initial_track_rect(video_capture)
 
     # KCF object tracking, get the initial theta state of robot needs two timestep approximation
@@ -84,10 +84,15 @@ def online_planning(planner, goal):
         ret, mat = video_capture.read()
         last_track_rect = tracking_rect
         err_code, tracking_rect = tracker.update(mat)
-        if t == 50:
+        if t > 1:
             init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
-            break
-        if t % replan_timestep_horizon == 0 and False:
+        if t > 75:
+            break 
+        if t % replan_timestep_horizon == 0:
+            tracking_rect, image_2 = localize_robot_initial_track_rect(video_capture)
+            tracker = cv2.TrackerKCF_create()
+            tracker.init(image_2, tracking_rect)
+            last_track_rect = tracking_rect
             plan = planner.plan_to_pose(tuple(init_robot_state), goal, replan_timestep_horizon)
             if plan:
                 planner.execute_plan(plan, replan_timestep_horizon)
@@ -116,7 +121,8 @@ def online_planning(planner, goal):
             cv2.imwrite("timestep_2.png", mat)
         if  t % replan_timestep_horizon == 0 and plan:
             cv2.imwrite(f"timestep_{t}.png", mat)
-        #vw.write(mat)
+        vw.write(mat)
+
         cv2.imshow("Camera Tracking", mat)
 
         cv2.waitKey(50)
@@ -124,7 +130,7 @@ def online_planning(planner, goal):
         if SYSTEM_ID_MODE:
             xys.append(xy)
         t += 1
-    #vw.release()
+    vw.release()
 
     if SYSTEM_ID_MODE:
         xys = np.array(xys)
@@ -139,7 +145,7 @@ if __name__ == '__main__':
                                          obstacles = [],
                                          robot_radius = 10,
                                          primitive_duration = 15,
-                                         goal_bias=0.75)
-    planner = RRTPlanner(config, expand_dist=50, max_iter=200)
+                                         goal_bias=0.25)
+    planner = RRTPlanner(config, expand_dist=50, max_iter=100)
 
     online_planning(planner, goal)
