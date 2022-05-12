@@ -40,7 +40,7 @@ def two_rects_to_state(b_rect_new, b_rect_old):
 def show_cv2_plan(mat, plan, planner):
     for t, p, c in plan:
         center = tuple(planner.config_space.config2image_coords(p[:2].astype(int)))
-        mat = cv2.circle(mat, center=center, radius=1, color=(0, 165, 255), thickness=1)
+        mat = cv2.circle(mat, center=center, radius=2, color=(0, 165, 255), thickness=2)
     return mat 
 
 def online_planning(planner, goal):
@@ -88,7 +88,7 @@ def online_planning(planner, goal):
         #vw.write(mat)
         cv2.imshow("Camera Tracking", mat)
 
-        cv2.waitKey(10)
+        cv2.waitKey(50)
         
         if SYSTEM_ID_MODE:
             xys.append(xy)

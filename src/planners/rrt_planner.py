@@ -88,6 +88,7 @@ class RRTPlanner(object):
         ----------
         plan : :obj: Plan. See configuration_space.Plan
         """
+        print("======= Executing Motion Plan =======")
         if len(plan) == 0:
             return
         rate = 0.1 # Magic number here
@@ -109,6 +110,7 @@ class RRTPlanner(object):
             time.sleep(rate)
 
     def clap(self):
+        print("I'M CLAPPING")
         pydub.playback.play(self.audio_seg)
 
     def plot_execution(self):
