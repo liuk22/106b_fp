@@ -50,6 +50,7 @@ class RRTPlanner(object):
         self.audio_seg = self.audio_seg[2000:3000]
         self.audio_seg.apply_gain(20)
         self.since_last_clap = 0
+        self.was_forward = True # this might need to sensed
 
 
     def plan_to_pose(self, start, goal, prefix_time_length=100):
@@ -81,7 +82,7 @@ class RRTPlanner(object):
         return None
 
 
-    def execute_plan(self, plan):
+    def execute_plan(self, plan, horizon):
         """
         Executes a plan made by the planner
 
@@ -96,7 +97,7 @@ class RRTPlanner(object):
         start_t = time.time()
         while True:
             t = (time.time() - start_t)
-            if t > plan.times[-1]:
+            if t > rate * horizon :
                 break
             state, cmd = plan.get(t)
             if cmd[1] == self.config_space.phi2 and (self.since_last_clap > self.config_space.primitive_duration or self.was_forward):
