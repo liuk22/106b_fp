@@ -35,12 +35,21 @@ def two_rects_to_state(b_rect_new, b_rect_old):
             (b_rect_old[1] + b_rect_old[3] / 2)]).astype(int)
     direction = xy - xy_old
     theta = np.arctan2(direction[1], direction[0])
-    return np.array([xy[0], xy[1], theta + np.pi, 0])
+    return np.array([xy[0], xy[1], theta + np.pi, 0]).astype(int)
 
 def show_cv2_plan(mat, plan, planner):
+    visited_p = set() 
     for t, p, c in plan:
-        center = tuple(planner.config_space.config2image_coords(p[:2].astype(int)))
+        center = tuple(planner.config_space.config2image_coords(p[:2]))
         mat = cv2.circle(mat, center=center, radius=2, color=(0, 165, 255), thickness=2)
+        visited_p.add(str(p)) 
+
+    for path in planner.graph.get_edge_paths():
+        for t, p, c in plan:
+            if str(p) not in visited_p:
+                center = tuple(planner.config_space.config2image_coords(p[:2]))
+                mat = cv2.circle(mat, center=center, radius=2, color=(203, 192, 255), thickness=2)
+            
     return mat 
 
 def online_planning(planner, goal):
@@ -59,7 +68,7 @@ def online_planning(planner, goal):
     init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
     replan_timestep_horizon = 20
     if not SYSTEM_ID_MODE:
-        plan = planner.plan_to_pose(init_robot_state, goal)
+        plan = planner.plan_to_pose(tuple(init_robot_state), goal)
         if plan:
             planner.execute_plan(plan, replan_timestep_horizon)
         else:
@@ -72,8 +81,8 @@ def online_planning(planner, goal):
         last_track_rect = tracking_rect
         err_code, tracking_rect = tracker.update(mat)
         init_robot_state = two_rects_to_state(tracking_rect, last_track_rect)
-        if t % replan_timestep_horizon == 0:
-            plan = planner.plan_to_pose(init_robot_state, goal, replan_timestep_horizon)
+        if t % replan_timestep_horizon == 0 and False:
+            plan = planner.plan_to_pose(tuple(init_robot_state), goal, replan_timestep_horizon)
             if plan:
                 planner.execute_plan(plan, replan_timestep_horizon)
             else:
@@ -119,6 +128,6 @@ if __name__ == '__main__':
                                          obstacles = [],
                                          robot_radius = 10,
                                          primitive_duration = 15)
-    planner = RRTPlanner(config, expand_dist=50, max_iter=100)
+    planner = RRTPlanner(config, expand_dist=50, max_iter=150)
 
     online_planning(planner, goal)

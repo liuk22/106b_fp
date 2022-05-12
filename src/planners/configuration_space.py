@@ -226,7 +226,10 @@ class HexbugConfigurationSpace(ConfigurationSpace):
         self.primitive_duration = primitive_duration
 
     def config2image_coords(self, config_xy):
-        new_xy = config_xy.copy()
+        new_xy = np.array(config_xy).astype(int)
+        new_xy = tuple(new_xy)
+        
+
         #new_xy[1] = self.high_lims[1] - config_xy[1]
         return new_xy
 

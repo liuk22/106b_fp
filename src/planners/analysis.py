@@ -1,9 +1,7 @@
-from turtle import position
 import matplotlib.pyplot as plt 
 import numpy as np
 from sklearn.mixture import GaussianMixture
 from matplotlib.patches import Ellipse
-import casadi
 
 def reject_outliers_offline(data, m=3):
     #print(abs(data - np.mean(data)) < m * np.std(data))
